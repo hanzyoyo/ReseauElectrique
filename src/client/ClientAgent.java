@@ -23,7 +23,25 @@ public class ClientAgent extends Agent{
 	
 	private double monthlyTotal = 0; // what if producer asks before first tick?
 	
-	private AID Producer;
+	class Producer{
+		private AID name;
+		private int prix = Integer.MAX_VALUE;
+		
+		public AID getName() {
+			return name;
+		}
+		public void setName(AID name) {
+			this.name = name;
+		}
+		public int getPrix() {
+			return prix;
+		}
+		public void setPrix(int prix) {
+			this.prix = prix;
+		}
+	}
+	
+	private Producer producer = new Producer();
 
 	public void setup(){
 		// Get the mean consumption/production of electricity in the arguments
@@ -48,8 +66,16 @@ public class ClientAgent extends Agent{
 				template.addServices(sd);
 				
 				try{
-					DFAgentDescription[] result = DFService.search(myAgent, template);
-					Producer = result[0].getName();
+					DFAgentDescription[] results = DFService.search(myAgent, template);
+					//Producer = result[0].getName();
+					
+					//request price to all electricity producers
+					ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+					for(int i = 0; i < results.length; i++){
+						msg.addReceiver(results[i].getName());
+					}
+					msg.setContent("Demande Prix");
+					myAgent.send(msg);
 				}catch(FIPAException e){
 					e.printStackTrace();
 				}
@@ -69,22 +95,28 @@ public class ClientAgent extends Agent{
 			}
 		});
 		
-		//add cyclic behavior to transmit consumption to producer when requested by producer
+		//add cyclic behavior to handle messages
 		addBehaviour(new CyclicBehaviour(this) {
 			
 			@Override
 			public void action() {
-				// if request received
-				MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REQUEST);
-				ACLMessage msg = myAgent.receive(mt);
+				ACLMessage msg = myAgent.receive();
 				
 				if(msg != null){
-					//if received request is from the agent's producer 
-					if(msg.getSender() == ((ClientAgent)myAgent).Producer){
+					//if received message is a request from the agent's producer send monthly consumption
+					if(msg.getSender() == ((ClientAgent)myAgent).producer.getName() && msg.getPerformative() == ACLMessage.REQUEST){
 						ACLMessage reply = msg.createReply();
 						reply.setPerformative(ACLMessage.INFORM);
 						reply.setContent(String.valueOf(monthlyTotal));
 						myAgent.send(reply);
+					}
+					else if(msg.getPerformative() == ACLMessage.INFORM){ //what if message received is an information but not on the prices?
+						//keep producer with cheapest price
+						if(Integer.valueOf(msg.getContent()) < ((ClientAgent)myAgent).producer.getPrix()){
+							((ClientAgent)myAgent).producer.setName(msg.getSender());
+							((ClientAgent)myAgent).producer.setPrix(Integer.valueOf(msg.getContent()));
+						}
+						//TODO : manage timer when message received, if timeout ask for subscription to producer
 					}
 				}else{
 					block();

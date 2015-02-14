@@ -38,6 +38,7 @@ public class HorlogeAgent extends Agent{
 						msg.addReceiver(results[i].getName());
 					}
 					msg.setContent(String.valueOf(this.getTickCount()));
+					myAgent.send(msg);
 				}catch(FIPAException e){
 					e.printStackTrace();
 				}

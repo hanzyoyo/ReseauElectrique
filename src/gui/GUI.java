@@ -12,6 +12,7 @@ import java.awt.event.ActionListener;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JTextArea;
 
 import client.*;
@@ -29,7 +30,7 @@ public class GUI extends Agent{
 		fenetre2.add(new JLabel("Producteurs"));
 		
 		//TODO : list producers and make them clickable to show their properties pane
-		fenetre2.add(new JTextArea("Vous pouvez modifier ce texte",4,15));
+		fenetre2.add(new JList<>());
 		//
 		
 		JButton newProdButton = new JButton("Nouveau Producteur");
@@ -48,6 +49,7 @@ public class GUI extends Agent{
 		
 		@Override
 		public void actionPerformed(ActionEvent arg0) {
+			//TODO : create new FournisseurAgent once added by Jean
 			System.out.println("Nouveau Producteur");
 		}
 		
