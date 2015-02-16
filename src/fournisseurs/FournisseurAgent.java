@@ -16,27 +16,25 @@ import jade.lang.acl.MessageTemplate;
 
 public class FournisseurAgent extends Agent{
 
-	private int prixaukilovente;
+	private int prixaukilovente = 10;
 	private int prixaukiloproduction;
 	private int volumerestant;
 	private int capital;
 	private ArrayList<AID> clients;
 	private int demande=0;
 
-	public FournisseurAgent(int prixvente,int prixprod, int volume,int capital){
+	/*public FournisseurAgent(int prixvente,int prixprod, int volume,int capital){
 		this.prixaukilovente=prixvente;
 		this.prixaukiloproduction=prixprod;
 		this.volumerestant=volume;
 		this.capital=capital;
-	}
-
-
+	}*/
 
 
 	protected void setup() {
 
 		// Printout a welcome message
-		System.out.println("Le fournisseur "+getAID().getName()+" d��marre sa production.");
+		System.out.println("Le fournisseur "+getAID().getName()+" démarre sa production.");
 
 		// Charger les comportements
 
@@ -49,6 +47,7 @@ public class FournisseurAgent extends Agent{
 				dfd.setName(getAID());
 				ServiceDescription sd =	new	ServiceDescription();
 				sd.setType("electricity-producer");
+				sd.setName("production");
 				dfd.addServices(sd);
 				try{
 					DFService.register(myAgent, dfd);
@@ -88,11 +87,15 @@ public class FournisseurAgent extends Agent{
 				case 0:
 					msg=myAgent.receive();
 					if (msg!=null){
-						if(msg.getPerformative() == ACLMessage.CFP){
+						if(msg.getPerformative() == ACLMessage.CFP){							
 							ACLMessage reply1=msg.createReply();
 							reply1.setPerformative(ACLMessage.PROPOSE);
 							reply1.setContent(String.valueOf(myFournisseur.prixaukilovente));
 							myAgent.send(reply1);
+							
+							//log
+							System.out.println("Producteur " + myAgent.getName() + " envoie proposition au Client " + (AID)reply1.getAllReceiver().next());
+							
 							step++;
 						}
 					}
@@ -104,6 +107,10 @@ public class FournisseurAgent extends Agent{
 					msg=myAgent.receive();
 					if (msg!=null){
 						if (msg.getPerformative() == ACLMessage.REJECT_PROPOSAL){
+
+							//log
+							System.out.println("Agent " + msg.getSender() + " refuse la proposition.");
+							
 							step+=-1;
 							break;
 						}
@@ -112,6 +119,10 @@ public class FournisseurAgent extends Agent{
 							ACLMessage reply2=msg.createReply();
 							reply2.setPerformative(ACLMessage.INFORM);
 							myAgent.send(reply2);
+
+							//log
+							System.out.println("Producteur " + myAgent.getName() + " confirme l'abonnement du Client " + msg.getAllReceiver());
+							
 							step = 0;
 						}
 

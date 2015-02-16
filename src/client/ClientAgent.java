@@ -123,14 +123,20 @@ public class ClientAgent extends Agent{
 					cfp.setConversationId("Demande Prix");
 					cfp.setReplyWith("cfp"+System.currentTimeMillis());
 					myAgent.send(cfp);
-					mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Demande Prix"),MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+					//mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Demande Prix"),MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+					
+					//log
+					System.out.println("Agent " + myAgent.getName() + " envoie CFP");
 
 					++step;
 					break;
 				case 1:
-					ACLMessage reply = myAgent.receive(mt);
+					ACLMessage reply = myAgent.receive();
 					if(reply != null){
 						if(reply.getPerformative() == ACLMessage.PROPOSE){ //what if message received is an information but not on the prices?
+							//log
+							System.out.println("Client "+ myAgent.getName() + " reçoit proposition du Producteur " + reply.getSender());
+							
 							//keep producer with cheapest price
 							int price = Integer.parseInt(reply.getContent());
 							ClientAgent myClient = (ClientAgent)myAgent;
@@ -144,6 +150,9 @@ public class ClientAgent extends Agent{
 									myAgent.addBehaviour(new WakerBehaviour(myAgent,10000){
 										protected void handleElapsedTimeout() {
 
+											//log
+											System.out.println("Timeout Elapsed");
+											
 											++SubscriptionBehaviour.this.step;
 										}
 									});
@@ -161,6 +170,9 @@ public class ClientAgent extends Agent{
 					msg.setReplyWith("Subscription"+System.currentTimeMillis());
 					myAgent.send(msg);
 
+					//log
+					System.out.println("Agent " + myAgent.getName() + " envoie demande d'abonnement au Producteur " + ((ClientAgent)myAgent).producer.getName());
+					
 					mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Subscription"),MessageTemplate.MatchInReplyTo(msg.getReplyWith()));
 					++step;
 					break;
