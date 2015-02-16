@@ -11,6 +11,8 @@ import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
+import jade.domain.introspection.ACLMessage;
+import jade.lang.acl.MessageTemplate;
 
 public class FournisseurAgent extends Agent{
 
@@ -76,7 +78,39 @@ public class FournisseurAgent extends Agent{
 		});
 		//...
 		//...
-	}
+	
+	 addBehaviour(new CyclicBehaviour){
+		 private MessageTemplate mt=null;
+		 int step=0;
+		 ACLMessage msg=myAgent.receive(mt);
+		 switch (step){
+		 case 0:
+		 if (msg!=null){
+			 ACLMessage reply1=msg.createReply(mt);
+			 reply1.setPerformative(ACLMessage.PROPOSE);
+			 reply1.setContent(String.valueOf(myAgent.prixaukilovente));
+			 reply1.send();
+			 step++;}
+		 
+		 else {block();} 
+		 break;
+			 case 1: 
+				 if (msg!=null){
+					 if (msg.getPerformative()==REJECT_PROPOSAL){
+						 step+=-1;break;}
+					 else {myAgent.clients.Add(msg.getSender());
+					 ACLMessage reply2=msg.createReply();
+					 reply2.setPerformative(ACLMessage.INFORM);
+					 reply2.send();step++;}
+						 
+					 }
+			 
+
+		 }
+		 
+		 }
+	 }
+	 }
 
 	protected void produire1kilo(){
 		this.volumerestant+=1;
