@@ -7,6 +7,7 @@ import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
+import jade.core.behaviours.WakerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -17,16 +18,16 @@ import jade.lang.acl.MessageTemplate;
 public class ClientAgent extends Agent{
 	private int meanConsumption;
 	private int varianceConsumption;
-	
+
 	private int meanProduction = 0;
 	private int varianceProduction = 0;
-	
+
 	private double monthlyTotal = 0; // what if producer asks before first tick?
-	
+
 	class Producer{
-		private AID name;
-		private int prix = Integer.MAX_VALUE;
-		
+		private AID name = null;
+		private int prix;
+
 		public AID getName() {
 			return name;
 		}
@@ -40,7 +41,7 @@ public class ClientAgent extends Agent{
 			this.prix = prix;
 		}
 	}
-	
+
 	private Producer producer = new Producer();
 
 	public void setup(){
@@ -53,38 +54,82 @@ public class ClientAgent extends Agent{
 				meanProduction = (int) args[1];
 			}
 		}
-		
+
 		//add one-shot behavior to subscribe to Producer
 		addBehaviour(new OneShotBehaviour(this) {
-			
+
 			@Override
 			public void action() {
+				int step = 0;
+				MessageTemplate mt = null;
+
 				// consult DFService and take first (for now) Producer
 				DFAgentDescription template = new DFAgentDescription();
 				ServiceDescription sd = new ServiceDescription();
 				sd.setType("electricity-producer");
 				template.addServices(sd);
-				
+
 				try{
 					DFAgentDescription[] results = DFService.search(myAgent, template);
 					//Producer = result[0].getName();
-					
-					//request price to all electricity producers
-					ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-					for(int i = 0; i < results.length; i++){
-						msg.addReceiver(results[i].getName());
+
+					switch(step){
+					case 0:
+						//request price to all electricity producers
+						ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+						for(int i = 0; i < results.length; i++){
+							cfp.addReceiver(results[i].getName());
+						}
+						cfp.setConversationId("Demande Prix");
+						cfp.setReplyWith("cfp"+System.currentTimeMillis());
+						myAgent.send(cfp);
+						mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Demande Prix"),MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+
+						++step;
+						break;
+					case 1:
+						ACLMessage reply = myAgent.receive(mt);
+						if(reply != null){
+							if(reply.getPerformative() == ACLMessage.PROPOSE){ //what if message received is an information but not on the prices?
+								//keep producer with cheapest price
+								int price = Integer.parseInt(reply.getContent());
+								ClientAgent myClient = (ClientAgent)myAgent;
+
+								if(myClient.producer.getName() == null || price < myClient.producer.getPrix()){
+									myClient.producer.setName(reply.getSender());
+									myClient.producer.setPrix(price);
+									
+									//if first answer received create timeout
+									if(myClient.producer.getName() == null){
+										myAgent.addBehaviour(new WakerBehaviour(myAgent, 10000){
+											protected  void handleElapsedTimeout() {
+												ACLMessage msg = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+												msg.addReceiver(((ClientAgent)myAgent).producer.getName());
+												msg.setConversationId("Subscription");
+												msg.setReplyWith("Subscription"+System.currentTimeMillis());
+												myAgent.send(msg);
+												
+												mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Subscription"),MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+											}
+										});
+									}
+								}
+							}
+						}
+						else{
+							block();
+						}
+
 					}
-					msg.setContent("Demande Prix");
-					myAgent.send(msg);
 				}catch(FIPAException e){
 					e.printStackTrace();
 				}
 			}
 		});
-		
+
 		//add ticked behavior to simulate random consumption every month
 		addBehaviour(new TickerBehaviour(this,5000) {
-			
+
 			@Override
 			protected void onTick() {
 				// TODO Auto-generated method stub
@@ -94,14 +139,14 @@ public class ClientAgent extends Agent{
 				monthlyTotal = newConsumption - newProduction;
 			}
 		});
-		
+
 		//add cyclic behavior to handle messages
 		addBehaviour(new CyclicBehaviour(this) {
-			
+
 			@Override
 			public void action() {
 				ACLMessage msg = myAgent.receive();
-				
+
 				if(msg != null){
 					//if received message is a request from the agent's producer send monthly consumption
 					if(msg.getSender() == ((ClientAgent)myAgent).producer.getName() && msg.getPerformative() == ACLMessage.REQUEST){
@@ -110,20 +155,29 @@ public class ClientAgent extends Agent{
 						reply.setContent(String.valueOf(monthlyTotal));
 						myAgent.send(reply);
 					}
-					else if(msg.getPerformative() == ACLMessage.INFORM){ //what if message received is an information but not on the prices?
+					else if(msg.getPerformative() == ACLMessage.PROPOSE){ //what if message received is an information but not on the prices?
 						//keep producer with cheapest price
 						if(Integer.valueOf(msg.getContent()) < ((ClientAgent)myAgent).producer.getPrix()){
 							((ClientAgent)myAgent).producer.setName(msg.getSender());
 							((ClientAgent)myAgent).producer.setPrix(Integer.valueOf(msg.getContent()));
 						}
 						//TODO : manage timer when message received, if timeout ask for subscription to producer
+						myAgent.addBehaviour(new WakerBehaviour(myAgent,10000) {
+							protected  void handleElapsedTimeout() {
+								ACLMessage msg = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+								msg.addReceiver(((ClientAgent)myAgent).producer.getName());
+								msg.setConversationId("Subscription");
+								msg.setReplyWith("Subscription"+System.currentTimeMillis());
+								myAgent.send(msg);
+							}
+						});
 					}
 				}else{
 					block();
 				}
 			}
 		});
-		
-		
+
+
 	}
 }

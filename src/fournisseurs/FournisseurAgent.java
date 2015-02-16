@@ -34,7 +34,7 @@ public class FournisseurAgent extends Agent{
 	protected void setup() {
 
 		// Printout a welcome message
-		System.out.println("Le fournisseur "+getAID().getName()+" démarre sa production.");
+		System.out.println("Le fournisseur "+getAID().getName()+" d��marre sa production.");
 
 		// Charger les comportements
 
@@ -64,7 +64,7 @@ public class FournisseurAgent extends Agent{
 				if ((demande>0) && (capital>prixaukiloproduction)){
 					((FournisseurAgent) myAgent).produire1kilo();
 					for(int i=0 ; i < ((FournisseurAgent) myAgent).clients.size() ; i++){
-						((FournisseurAgent) myAgent).essaivendre(((FournisseurAgent) myAgent).clients.get(i));
+						//((FournisseurAgent) myAgent).essaivendre(((FournisseurAgent) myAgent).clients.get(i));
 					}
 				}
 				else if (capital<prixaukiloproduction){
@@ -83,13 +83,13 @@ public class FournisseurAgent extends Agent{
 		this.capital+=-1;
 	}
 
-	protected void essaivendre(ClientAgent c){
-		if (c.veutELectricite && (c.getCapital()>this.prixaukilovente)){
-			this.volumerestant+=-1;
-			this.capital+=prixaukilovente;
-			c.setCapital(c.getCapital()-this.prixaukilovente);}
-		else {}
-	}
+//	protected void essaivendre(ClientAgent c){
+//		if (c.veutELectricite && (c.getCapital()>this.prixaukilovente)){
+//			this.volumerestant+=-1;
+//			this.capital+=prixaukilovente;
+//			c.setCapital(c.getCapital()-this.prixaukilovente);}
+//		else {}
+//	}
 
 	protected void takeDown() {
 		//de-register service
@@ -100,7 +100,7 @@ public class FournisseurAgent extends Agent{
 			fe.printStackTrace();
 		}
 		// Printout a dismissal message
-		System.out.println("Le fournisseur "+getAID().getName()+" ne vend plus d'electricité.");
+		System.out.println("Le fournisseur "+getAID().getName()+" ne vend plus d'electricit��.");
 	}
 
 
