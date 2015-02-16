@@ -19,7 +19,6 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 
-import com.sun.xml.internal.bind.v2.schemagen.xmlschema.List;
 
 import client.*;
 import fournisseurs.*;
@@ -56,7 +55,7 @@ public class GUI extends Agent{
 		
 		JButton newClientButton = new JButton(("Nouveau Client"));
 		fenetre2.add(newClientButton);
-		newClientButton.addActionListener(new NewClientListener());
+		//newClientButton.addActionListener(new NewClientListener());
 
 		fenetre2.pack();
 		fenetre2.setVisible(true);
@@ -73,13 +72,13 @@ public class GUI extends Agent{
 	}
 	
 	//listener who creates a new ClientAgent in the same controller when the button is clicked
-	class NewClientListener implements ActionListener{
+	/*class NewClientListener implements ActionListener{
 
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			try {
 				//TODO : how to create UNIQUE agent? no logs?
-				Dialog dialog = new Dialog(super, "Nouvel Agent");
+				//Dialog dialog = new Dialog(super, "Nouvel Agent");
 				JTextField agent_name = new JTextField("Nom de l'agent", 30);
 				JButton confirm = new JButton("Confirmer");
 				dialog.add(agent_name);
@@ -92,7 +91,7 @@ public class GUI extends Agent{
 			}
 		}
 		
-	}
+	}*/
 	
 	class selectProdListener implements ActionListener{
 

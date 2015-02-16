@@ -56,76 +56,7 @@ public class ClientAgent extends Agent{
 		}
 
 		//add one-shot behavior to subscribe to Producer
-		addBehaviour(new OneShotBehaviour(this) {
-
-			@Override
-			public void action() {
-				int step = 0;
-				MessageTemplate mt = null;
-
-				// consult DFService and take first (for now) Producer
-				DFAgentDescription template = new DFAgentDescription();
-				ServiceDescription sd = new ServiceDescription();
-				sd.setType("electricity-producer");
-				template.addServices(sd);
-
-				try{
-					DFAgentDescription[] results = DFService.search(myAgent, template);
-					//Producer = result[0].getName();
-
-					switch(step){
-					case 0:
-						//request price to all electricity producers
-						ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
-						for(int i = 0; i < results.length; i++){
-							cfp.addReceiver(results[i].getName());
-						}
-						cfp.setConversationId("Demande Prix");
-						cfp.setReplyWith("cfp"+System.currentTimeMillis());
-						myAgent.send(cfp);
-						mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Demande Prix"),MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
-
-						++step;
-						break;
-					case 1:
-						ACLMessage reply = myAgent.receive(mt);
-						if(reply != null){
-							if(reply.getPerformative() == ACLMessage.PROPOSE){ //what if message received is an information but not on the prices?
-								//keep producer with cheapest price
-								int price = Integer.parseInt(reply.getContent());
-								ClientAgent myClient = (ClientAgent)myAgent;
-
-								if(myClient.producer.getName() == null || price < myClient.producer.getPrix()){
-									myClient.producer.setName(reply.getSender());
-									myClient.producer.setPrix(price);
-									
-									//if first answer received create timeout
-									if(myClient.producer.getName() == null){
-										myAgent.addBehaviour(new WakerBehaviour(myAgent, 10000){
-											protected  void handleElapsedTimeout() {
-												ACLMessage msg = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
-												msg.addReceiver(((ClientAgent)myAgent).producer.getName());
-												msg.setConversationId("Subscription");
-												msg.setReplyWith("Subscription"+System.currentTimeMillis());
-												myAgent.send(msg);
-												
-												mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Subscription"),MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
-											}
-										});
-									}
-								}
-							}
-						}
-						else{
-							block();
-						}
-
-					}
-				}catch(FIPAException e){
-					e.printStackTrace();
-				}
-			}
-		});
+		addBehaviour(new SubscriptionBehaviour());
 
 		//add ticked behavior to simulate random consumption every month
 		addBehaviour(new TickerBehaviour(this,5000) {
@@ -140,7 +71,7 @@ public class ClientAgent extends Agent{
 			}
 		});
 
-		//add cyclic behavior to handle messages
+		//add cyclic behavior to handle requests for monthly consumption
 		addBehaviour(new CyclicBehaviour(this) {
 
 			@Override
@@ -154,25 +85,9 @@ public class ClientAgent extends Agent{
 						reply.setPerformative(ACLMessage.INFORM);
 						reply.setContent(String.valueOf(monthlyTotal));
 						myAgent.send(reply);
-					}
-					else if(msg.getPerformative() == ACLMessage.PROPOSE){ //what if message received is an information but not on the prices?
-						//keep producer with cheapest price
-						if(Integer.valueOf(msg.getContent()) < ((ClientAgent)myAgent).producer.getPrix()){
-							((ClientAgent)myAgent).producer.setName(msg.getSender());
-							((ClientAgent)myAgent).producer.setPrix(Integer.valueOf(msg.getContent()));
-						}
-						//TODO : manage timer when message received, if timeout ask for subscription to producer
-						myAgent.addBehaviour(new WakerBehaviour(myAgent,10000) {
-							protected  void handleElapsedTimeout() {
-								ACLMessage msg = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
-								msg.addReceiver(((ClientAgent)myAgent).producer.getName());
-								msg.setConversationId("Subscription");
-								msg.setReplyWith("Subscription"+System.currentTimeMillis());
-								myAgent.send(msg);
-							}
-						});
-					}
-				}else{
+					}					
+				}
+				else{
 					block();
 				}
 			}
@@ -180,4 +95,92 @@ public class ClientAgent extends Agent{
 
 
 	}
+
+	class SubscriptionBehaviour extends OneShotBehaviour{
+		private int step = 0;
+
+		@Override
+		public void action() {
+			MessageTemplate mt = null;
+
+			// consult DFService and take first (for now) Producer
+			DFAgentDescription template = new DFAgentDescription();
+			ServiceDescription sd = new ServiceDescription();
+			sd.setType("electricity-producer");
+			template.addServices(sd);
+
+			try{
+				DFAgentDescription[] results = DFService.search(myAgent, template);
+				//Producer = result[0].getName();
+
+				switch(step){
+				case 0:
+					//request price to all electricity producers
+					ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+					for(int i = 0; i < results.length; i++){
+						cfp.addReceiver(results[i].getName());
+					}
+					cfp.setConversationId("Demande Prix");
+					cfp.setReplyWith("cfp"+System.currentTimeMillis());
+					myAgent.send(cfp);
+					mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Demande Prix"),MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+
+					++step;
+					break;
+				case 1:
+					ACLMessage reply = myAgent.receive(mt);
+					if(reply != null){
+						if(reply.getPerformative() == ACLMessage.PROPOSE){ //what if message received is an information but not on the prices?
+							//keep producer with cheapest price
+							int price = Integer.parseInt(reply.getContent());
+							ClientAgent myClient = (ClientAgent)myAgent;
+
+							if(myClient.producer.getName() == null || price < myClient.producer.getPrix()){
+								myClient.producer.setName(reply.getSender());
+								myClient.producer.setPrix(price);
+
+								//if first answer received create timeout. what if no answer received?
+								if(myClient.producer.getName() == null){
+									myAgent.addBehaviour(new WakerBehaviour(myAgent,10000){
+										protected void handleElapsedTimeout() {
+
+											++SubscriptionBehaviour.this.step;
+										}
+									});
+								}
+							}
+						}
+					}else
+						block();
+					break;
+				case 2:
+					//send proposal agreement and start subscription
+					ACLMessage msg = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+					msg.addReceiver(((ClientAgent)myAgent).producer.getName());
+					msg.setConversationId("Subscription");
+					msg.setReplyWith("Subscription"+System.currentTimeMillis());
+					myAgent.send(msg);
+
+					mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Subscription"),MessageTemplate.MatchInReplyTo(msg.getReplyWith()));
+					++step;
+					break;
+				case 3:
+					//wait for subscription acknowledgment
+					reply = myAgent.receive(mt);
+					if(reply != null){
+						if(reply.getPerformative() == ACLMessage.INFORM){
+							System.out.println("Client "+myAgent.getName()+" est abonné au Producteur "+reply.getSender());
+							++step;
+						}
+					}
+					else{
+						block();
+					}
+				}
+			}catch(FIPAException e){
+				e.printStackTrace();
+			}
+		}
+	}
 }
+

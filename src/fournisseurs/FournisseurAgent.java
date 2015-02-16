@@ -11,7 +11,7 @@ import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
-import jade.domain.introspection.ACLMessage;
+import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
 public class FournisseurAgent extends Agent{
@@ -78,52 +78,63 @@ public class FournisseurAgent extends Agent{
 		});
 		//...
 		//...
-	
-	 addBehaviour(new CyclicBehaviour){
-		 private MessageTemplate mt=null;
-		 int step=0;
-		 ACLMessage msg=myAgent.receive(mt);
-		 switch (step){
-		 case 0:
-		 if (msg!=null){
-			 ACLMessage reply1=msg.createReply(mt);
-			 reply1.setPerformative(ACLMessage.PROPOSE);
-			 reply1.setContent(String.valueOf(myAgent.prixaukilovente));
-			 reply1.send();
-			 step++;}
-		 
-		 else {block();} 
-		 break;
-			 case 1: 
-				 if (msg!=null){
-					 if (msg.getPerformative()==REJECT_PROPOSAL){
-						 step+=-1;break;}
-					 else {myAgent.clients.Add(msg.getSender());
-					 ACLMessage reply2=msg.createReply();
-					 reply2.setPerformative(ACLMessage.INFORM);
-					 reply2.send();step++;}
-						 
-					 }
-			 
 
-		 }
-		 
-		 }
-	 }
-	 }
+		addBehaviour(new CyclicBehaviour(this){
+			public void action() {
+				int step=0;
+				FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
+				ACLMessage msg;
+				switch (step){
+				case 0:
+					msg=myAgent.receive();
+					if (msg!=null){
+						if(msg.getPerformative() == ACLMessage.CFP){
+							ACLMessage reply1=msg.createReply();
+							reply1.setPerformative(ACLMessage.PROPOSE);
+							reply1.setContent(String.valueOf(myFournisseur.prixaukilovente));
+							myAgent.send(reply1);
+							step++;
+						}
+					}
+					else {
+						block();
+					} 
+					break;
+				case 1: 
+					msg=myAgent.receive();
+					if (msg!=null){
+						if (msg.getPerformative() == ACLMessage.REJECT_PROPOSAL){
+							step+=-1;
+							break;
+						}
+						else if(msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL){
+							myFournisseur.clients.add(msg.getSender());
+							ACLMessage reply2=msg.createReply();
+							reply2.setPerformative(ACLMessage.INFORM);
+							myAgent.send(reply2);
+							step = 0;
+						}
+
+					}
+					break;
+				}
+			}
+		});
+	}
+
 
 	protected void produire1kilo(){
 		this.volumerestant+=1;
 		this.capital+=-1;
 	}
 
-//	protected void essaivendre(ClientAgent c){
-//		if (c.veutELectricite && (c.getCapital()>this.prixaukilovente)){
-//			this.volumerestant+=-1;
-//			this.capital+=prixaukilovente;
-//			c.setCapital(c.getCapital()-this.prixaukilovente);}
-//		else {}
-//	}
+	//	protected void essaivendre(ClientAgent c){
+	//		if (c.veutELectricite && (c.getCapital()>this.prixaukilovente)){
+	//			this.volumerestant+=-1;
+	//			this.capital+=prixaukilovente;
+	//			c.setCapital(c.getCapital()-this.prixaukilovente);}
+	//		else {}
+	//	}
 
 	protected void takeDown() {
 		//de-register service
