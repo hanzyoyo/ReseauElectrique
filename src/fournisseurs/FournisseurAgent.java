@@ -120,6 +120,29 @@ public class FournisseurAgent extends Agent{
 				}
 			}
 		});
+		addBehaviour(new CyclicBehaviour(this){
+			public void action(){
+				
+				FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
+				ACLMessage msg;
+                msg=myAgent.receive();
+				if (msg!=null){
+					if (msg.getPerformative()==ACLMessage.INFORM){
+						for (int i=0;i<myFournisseur.clients.size();i++){
+							ACLMessage req=new ACLMessage(ACLMessage.REQUEST);
+							req.addReceiver(myFournisseur.clients.get(i));
+							myFournisseur.send(req);
+						}
+					}
+				}
+
+				else {block();}
+
+							
+							
+						}
+					});
+		
 	}
 
 
