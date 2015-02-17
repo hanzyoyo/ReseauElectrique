@@ -10,7 +10,7 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
 
 public class HorlogeAgent extends Agent{
-	private int msPerMonth;
+	private int msPerMonth = 5000;
 
 	public void setup(){
 		Object[] args = getArguments();
@@ -37,8 +37,12 @@ public class HorlogeAgent extends Agent{
 					for(int i = 0; i < results.length; i++){
 						msg.addReceiver(results[i].getName());
 					}
+					msg.setConversationId("top");
 					msg.setContent(String.valueOf(this.getTickCount()));
 					myAgent.send(msg);
+					
+					//log
+					System.out.println("Agent Horloge envoie un top pour la facturation");
 				}catch(FIPAException e){
 					e.printStackTrace();
 				}

@@ -4,6 +4,7 @@ import java.util.Random;
 
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
@@ -76,9 +77,14 @@ public class ClientAgent extends Agent{
 
 			@Override
 			public void action() {
-				ACLMessage msg = myAgent.receive();
+				ClientAgent myClient = (ClientAgent)myAgent;
+				MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchSender(myClient.producer.getName()), MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
+				ACLMessage msg = myAgent.receive(mt);
 
 				if(msg != null){
+					//log
+					System.out.println("Client "+myClient.getName()+" a reçu une demande de consommation");
+
 					//if received message is a request from the agent's producer send monthly consumption
 					if(msg.getSender() == ((ClientAgent)myAgent).producer.getName() && msg.getPerformative() == ACLMessage.REQUEST){
 						ACLMessage reply = msg.createReply();
@@ -96,7 +102,7 @@ public class ClientAgent extends Agent{
 
 	}
 
-	class SubscriptionBehaviour extends OneShotBehaviour{
+	class SubscriptionBehaviour extends Behaviour{ //problem if producer is not registered yet since it's oneshot + we do not go through all steps since it's oneshot
 		private int step = 0;
 
 		@Override
@@ -111,87 +117,96 @@ public class ClientAgent extends Agent{
 
 			try{
 				DFAgentDescription[] results = DFService.search(myAgent, template);
-				//Producer = result[0].getName();
 
-				switch(step){
-				case 0:
-					//request price to all electricity producers
-					ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
-					for(int i = 0; i < results.length; i++){
-						cfp.addReceiver(results[i].getName());
-					}
-					cfp.setConversationId("Demande Prix");
-					cfp.setReplyWith("cfp"+System.currentTimeMillis());
-					myAgent.send(cfp);
-					//mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Demande Prix"),MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
-					
-					//log
-					System.out.println("Agent " + myAgent.getName() + " envoie CFP");
+				//need to test if at least one producer is registered
+				if(results.length != 0){
+					switch(step){
+					case 0:
+						//request price to all electricity producers
+						ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+						for(int i = 0; i < results.length; i++){
+							cfp.addReceiver(results[i].getName());
+						}
+						cfp.setConversationId("Demande Prix");
+						cfp.setReplyWith("cfp"+System.currentTimeMillis());
+						myAgent.send(cfp);
+						//mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Demande Prix"),MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
 
-					++step;
-					break;
-				case 1:
-					ACLMessage reply = myAgent.receive();
-					if(reply != null){
-						if(reply.getPerformative() == ACLMessage.PROPOSE){ //what if message received is an information but not on the prices?
-							//log
-							System.out.println("Client "+ myAgent.getName() + " reçoit proposition du Producteur " + reply.getSender());
-							
-							//keep producer with cheapest price
-							int price = Integer.parseInt(reply.getContent());
-							ClientAgent myClient = (ClientAgent)myAgent;
+						//log
+						System.out.println("Agent " + myAgent.getName() + " envoie CFP");
 
-							if(myClient.producer.getName() == null || price < myClient.producer.getPrix()){
-								myClient.producer.setName(reply.getSender());
-								myClient.producer.setPrix(price);
+						step=1;
+						break;
+					case 1:
+						ACLMessage reply = myAgent.receive();
+						if(reply != null){						
+							if(reply.getPerformative() == ACLMessage.PROPOSE){ //what if message received is an information but not on the prices?
+								//log
+								System.out.println("Client "+ myAgent.getName() + " reçoit proposition du Producteur " + reply.getSender());
 
-								//if first answer received create timeout. what if no answer received?
-								if(myClient.producer.getName() == null){
-									myAgent.addBehaviour(new WakerBehaviour(myAgent,10000){
-										protected void handleElapsedTimeout() {
+								//keep producer with cheapest price
+								int price = Integer.parseInt(reply.getContent());
+								ClientAgent myClient = (ClientAgent)myAgent;
 
-											//log
-											System.out.println("Timeout Elapsed");
-											
-											++SubscriptionBehaviour.this.step;
-										}
-									});
+								if(myClient.producer.getName() == null || price < myClient.producer.getPrix()){
+									//if first answer received create timeout. what if no answer received?
+									if(myClient.producer.getName() == null){
+										myAgent.addBehaviour(new WakerBehaviour(myAgent,1000){
+											protected void handleElapsedTimeout() {
+
+												//log
+												System.out.println("Timeout Elapsed");
+
+												++SubscriptionBehaviour.this.step;
+											}
+										});
+									}
+									//update local variable
+									myClient.producer.setName(reply.getSender());
+									myClient.producer.setPrix(price);								
 								}
 							}
-						}
-					}else
-						block();
-					break;
-				case 2:
-					//send proposal agreement and start subscription
-					ACLMessage msg = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
-					msg.addReceiver(((ClientAgent)myAgent).producer.getName());
-					msg.setConversationId("Subscription");
-					msg.setReplyWith("Subscription"+System.currentTimeMillis());
-					myAgent.send(msg);
+						}else
+							block();
+						break;
+					case 2:
+						//send proposal agreement and start subscription
+						ACLMessage msg = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+						msg.addReceiver(((ClientAgent)myAgent).producer.getName());
+						msg.setConversationId("Subscription");
+						msg.setReplyWith("Subscription"+System.currentTimeMillis());
+						myAgent.send(msg);
 
-					//log
-					System.out.println("Agent " + myAgent.getName() + " envoie demande d'abonnement au Producteur " + ((ClientAgent)myAgent).producer.getName());
-					
-					mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Subscription"),MessageTemplate.MatchInReplyTo(msg.getReplyWith()));
-					++step;
-					break;
-				case 3:
-					//wait for subscription acknowledgment
-					reply = myAgent.receive(mt);
-					if(reply != null){
-						if(reply.getPerformative() == ACLMessage.INFORM){
-							System.out.println("Client "+myAgent.getName()+" est abonné au Producteur "+reply.getSender());
-							++step;
+						//log
+						System.out.println("Agent " + myAgent.getName() + " envoie demande d'abonnement au Producteur " + ((ClientAgent)myAgent).producer.getName());
+
+						mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Subscription"),MessageTemplate.MatchInReplyTo(msg.getReplyWith()));
+						++step;
+						break;
+					case 3:
+						//wait for subscription acknowledgment
+						reply = myAgent.receive(mt);
+						if(reply != null){
+							if(reply.getPerformative() == ACLMessage.INFORM){
+								System.out.println("Client "+myAgent.getName()+" est abonné au Producteur "+reply.getSender());
+								++step;
+							}
 						}
-					}
-					else{
-						block();
+						else{
+							block();
+						}
+						break;
 					}
 				}
 			}catch(FIPAException e){
 				e.printStackTrace();
 			}
+		}
+
+		@Override
+		public boolean done() {
+			// TODO Auto-generated method stub
+			return false;
 		}
 	}
 }

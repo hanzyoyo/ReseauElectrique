@@ -20,7 +20,7 @@ public class FournisseurAgent extends Agent{
 	private int prixaukiloproduction;
 	private int volumerestant;
 	private int capital;
-	private ArrayList<AID> clients;
+	private ArrayList<AID> clients = new ArrayList<AID>();
 	private int demande=0;
 
 	/*public FournisseurAgent(int prixvente,int prixprod, int volume,int capital){
@@ -58,7 +58,7 @@ public class FournisseurAgent extends Agent{
 			}
 		});
 
-		addBehaviour(new CyclicBehaviour(this) {
+		/*		addBehaviour(new CyclicBehaviour(this) {
 
 			@Override
 			public void action() {
@@ -74,43 +74,43 @@ public class FournisseurAgent extends Agent{
 				}
 				else{}				
 			}
-		});
-		//...
-		//...
+		});*/
 
 		addBehaviour(new CyclicBehaviour(this){
+			private int step = 0;
 			public void action() {
-				int step=0;
 				FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
 				ACLMessage msg;
+				MessageTemplate mt;
+
 				switch (step){
 				case 0:
-					msg=myAgent.receive();
-					if (msg!=null){
-						if(msg.getPerformative() == ACLMessage.CFP){							
-							ACLMessage reply1=msg.createReply();
-							reply1.setPerformative(ACLMessage.PROPOSE);
-							reply1.setContent(String.valueOf(myFournisseur.prixaukilovente));
-							myAgent.send(reply1);
-							
-							//log
-							System.out.println("Producteur " + myAgent.getName() + " envoie proposition au Client " + (AID)reply1.getAllReceiver().next());
-							
-							step++;
-						}
+					mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
+					msg=myAgent.receive(mt);
+					if (msg!=null){							
+						ACLMessage reply1=msg.createReply();
+						reply1.setPerformative(ACLMessage.PROPOSE);
+						reply1.setContent(String.valueOf(myFournisseur.prixaukilovente));
+						myAgent.send(reply1);
+
+						//log
+						System.out.println("Producteur " + myAgent.getName() + " envoie proposition au Client " + (AID)reply1.getAllReceiver().next());
+
+						step++;
 					}
 					else {
 						block();
 					} 
 					break;
 				case 1: 
+					//need to make a template to limit search to proposal response
 					msg=myAgent.receive();
 					if (msg!=null){
 						if (msg.getPerformative() == ACLMessage.REJECT_PROPOSAL){
 
 							//log
 							System.out.println("Agent " + msg.getSender() + " refuse la proposition.");
-							
+
 							step+=-1;
 							break;
 						}
@@ -122,7 +122,7 @@ public class FournisseurAgent extends Agent{
 
 							//log
 							System.out.println("Producteur " + myAgent.getName() + " confirme l'abonnement du Client " + msg.getAllReceiver());
-							
+
 							step = 0;
 						}
 
@@ -131,29 +131,33 @@ public class FournisseurAgent extends Agent{
 				}
 			}
 		});
+
 		addBehaviour(new CyclicBehaviour(this){
 			public void action(){
-				
 				FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
-				ACLMessage msg;
-                msg=myAgent.receive();
+
+				MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchConversationId("top"));
+				ACLMessage msg=myAgent.receive(mt);
+
 				if (msg!=null){
-					if (msg.getPerformative()==ACLMessage.INFORM){
-						for (int i=0;i<myFournisseur.clients.size();i++){
-							ACLMessage req=new ACLMessage(ACLMessage.REQUEST);
-							req.addReceiver(myFournisseur.clients.get(i));
-							myFournisseur.send(req);
-						}
+					//log
+					System.out.println("Producteur "+myAgent.getName()+" a reçu un top");
+
+					ACLMessage req = new ACLMessage(ACLMessage.REQUEST);
+					for (int i=0;i<myFournisseur.clients.size();i++){
+						req.addReceiver(myFournisseur.clients.get(i));
 					}
+					myFournisseur.send(req);
+
+					//log
+					System.out.println("Producteur "+myFournisseur.getName()+" a envoyé les demandes de consommation");
 				}
+				else {
+					block();
+				}
+			}
+		});
 
-				else {block();}
-
-							
-							
-						}
-					});
-		
 	}
 
 
