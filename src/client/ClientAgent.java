@@ -60,7 +60,7 @@ public class ClientAgent extends Agent{
 		addBehaviour(new SubscriptionBehaviour());
 
 		//add ticked behavior to simulate random consumption every month
-		addBehaviour(new TickerBehaviour(this,5000) {
+		/*addBehaviour(new TickerBehaviour(this,5000) {
 
 			@Override
 			protected void onTick() {
@@ -70,13 +70,14 @@ public class ClientAgent extends Agent{
 				double newProduction = rndm.nextGaussian() * varianceProduction + meanProduction;
 				monthlyTotal = newConsumption - newProduction;
 			}
-		});
+		});*/
 
 		//add cyclic behavior to handle requests for monthly consumption
 		addBehaviour(new CyclicBehaviour(this) {
 
 			@Override
 			public void action() {
+				
 				ClientAgent myClient = (ClientAgent)myAgent;
 				MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchSender(myClient.producer.getName()), MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
 				ACLMessage msg = myAgent.receive(mt);
@@ -107,6 +108,7 @@ public class ClientAgent extends Agent{
 
 		@Override
 		public void action() {
+			
 			MessageTemplate mt = null;
 
 			// consult DFService and take first (for now) Producer
@@ -130,7 +132,7 @@ public class ClientAgent extends Agent{
 						cfp.setConversationId("Demande Prix");
 						cfp.setReplyWith("cfp"+System.currentTimeMillis());
 						myAgent.send(cfp);
-						//mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Demande Prix"),MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+						mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Demande Prix"),MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
 
 						//log
 						System.out.println("Agent " + myAgent.getName() + " envoie CFP");
@@ -138,7 +140,7 @@ public class ClientAgent extends Agent{
 						step=1;
 						break;
 					case 1:
-						ACLMessage reply = myAgent.receive();
+						ACLMessage reply = myAgent.receive(mt);
 						if(reply != null){						
 							if(reply.getPerformative() == ACLMessage.PROPOSE){ //what if message received is an information but not on the prices?
 								//log
@@ -157,7 +159,7 @@ public class ClientAgent extends Agent{
 												//log
 												System.out.println("Timeout Elapsed");
 
-												++SubscriptionBehaviour.this.step;
+												SubscriptionBehaviour.this.step=2;
 											}
 										});
 									}
@@ -181,7 +183,7 @@ public class ClientAgent extends Agent{
 						System.out.println("Agent " + myAgent.getName() + " envoie demande d'abonnement au Producteur " + ((ClientAgent)myAgent).producer.getName());
 
 						mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Subscription"),MessageTemplate.MatchInReplyTo(msg.getReplyWith()));
-						++step;
+						step=3;
 						break;
 					case 3:
 						//wait for subscription acknowledgment
@@ -189,7 +191,7 @@ public class ClientAgent extends Agent{
 						if(reply != null){
 							if(reply.getPerformative() == ACLMessage.INFORM){
 								System.out.println("Client "+myAgent.getName()+" est abonné au Producteur "+reply.getSender());
-								++step;
+								step=4;
 							}
 						}
 						else{
@@ -206,7 +208,7 @@ public class ClientAgent extends Agent{
 		@Override
 		public boolean done() {
 			// TODO Auto-generated method stub
-			return false;
+			return step==4;
 		}
 	}
 }

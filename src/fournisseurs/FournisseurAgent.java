@@ -133,7 +133,7 @@ public class FournisseurAgent extends Agent{
 			}
 		});
 
-		addBehaviour(new CyclicBehaviour(this){
+		/*addBehaviour(new CyclicBehaviour(this){
 			public void action(){
 				FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
 
@@ -157,7 +157,7 @@ public class FournisseurAgent extends Agent{
 					block();
 				}
 			}
-		});
+		});*/
 
 	}
 
