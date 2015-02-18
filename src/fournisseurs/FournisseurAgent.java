@@ -104,7 +104,8 @@ public class FournisseurAgent extends Agent{
 					break;
 				case 1: 
 					//need to make a template to limit search to proposal response
-					msg=myAgent.receive();
+					mt = MessageTemplate.MatchConversationId("Subscription");
+					msg=myAgent.receive(mt);
 					if (msg!=null){
 						if (msg.getPerformative() == ACLMessage.REJECT_PROPOSAL){
 
