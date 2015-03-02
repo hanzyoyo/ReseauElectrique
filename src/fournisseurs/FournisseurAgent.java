@@ -24,9 +24,9 @@ public class FournisseurAgent extends Agent{
 	private int capital;
 	private ArrayList<AID> clients = new ArrayList<AID>();
 	private int demande=0;
-	private int LT=3;  //Durée long terme
-	private int CF=50000; //Cout Fixe de créer une installation
-	private int capamoy=10; //capacité moyenne d'une telle installation
+	private int LT=3;  //Durï¿½e long terme
+	private int CF=50000; //Cout Fixe de crï¿½er une installation
+	private int capamoy=10; //capacitï¿½ moyenne d'une telle installation
 	private int price_TIERS;
 	private int nb_transport_perso=0;
 
@@ -64,24 +64,6 @@ public class FournisseurAgent extends Agent{
 				}
 			}
 		});
-
-		/*		addBehaviour(new CyclicBehaviour(this) {
-
-			@Override
-			public void action() {
-				if ((demande>0) && (capital>prixaukiloproduction)){
-					((FournisseurAgent) myAgent).produire1kilo();
-					for(int i=0 ; i < ((FournisseurAgent) myAgent).clients.size() ; i++){
-						//((FournisseurAgent) myAgent).essaivendre(((FournisseurAgent) myAgent).clients.get(i));
-					}
-				}
-				else if (capital<prixaukiloproduction){
-					System.out.println("Le fournisseur "+getAID().getName()+" fait faillite.");
-					doDelete();
-				}
-				else{}				
-			}
-		});*/
 
 		addBehaviour(new CyclicBehaviour(this){
 			private int step = 0;
@@ -142,32 +124,19 @@ public class FournisseurAgent extends Agent{
 
 		addBehaviour(new CyclicBehaviour(this) {
 			public void action(){
-				FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
 
 				MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchConversationId("top"));
 				ACLMessage msg=myAgent.receive(mt);
 
 				if (msg!=null){
-					int Somme=0;
-					for (int i=0;i<myFournisseur.clients.size();i++){
-						MessageTemplate mt1= MessageTemplate.and(MessageTemplate.MatchConversationId("conso"),MessageTemplate.MatchSender(myFournisseur.getClients().get(i)));
-						ACLMessage msg1=myAgent.receive(mt1);
-						Somme+=Integer.valueOf(msg1.getContent());
-					}
-					System.out.println("Producteur "+myAgent.getName()+" a reçu un top");
+					//log
+					System.out.println("Producteur "+myAgent.getName()+" a reÃ§u un top");
+					
+					myAgent.addBehaviour(new MonthlyBehaviour());	
 
 					if (Integer.valueOf(msg.getContent())%12==0){
 						myAgent.addBehaviour(new TransportCheckBehaviour(Somme,myFournisseur));
-
-					} // fin if
-					ACLMessage req = new ACLMessage(ACLMessage.REQUEST);
-					for (int i=0;i<myFournisseur.clients.size();i++){
-						req.addReceiver(myFournisseur.clients.get(i));
 					}
-					myFournisseur.send(req);
-
-					//log
-					System.out.println("Producteur "+myFournisseur.getName()+" a envoyÃ© les demandes de consommation");
 				}
 				else {
 					block();
@@ -175,6 +144,47 @@ public class FournisseurAgent extends Agent{
 			}
 		});
 
+
+	}
+
+	public class MonthlyBehaviour extends Behaviour{
+
+		private FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
+		private int step = 0;
+
+		@Override
+		public void action() {
+			switch(step){
+			case 0:
+				//demande des consommations aux clients
+				ACLMessage req = new ACLMessage(ACLMessage.REQUEST);
+				for (int i=0;i<myFournisseur.clients.size();i++){
+					req.addReceiver(myFournisseur.clients.get(i));
+				}
+				myFournisseur.send(req);
+
+				//log
+				System.out.println("Producteur "+myFournisseur.getName()+" a envoyÃ© les demandes de consommation");
+
+				step = 1;
+				break;
+			case 1:
+
+				int Somme=0;
+				for (int i=0;i<myFournisseur.clients.size();i++){
+					MessageTemplate mt1= MessageTemplate.and(MessageTemplate.MatchConversationId("conso"),MessageTemplate.MatchSender(myFournisseur.getClients().get(i)));
+					ACLMessage msg1=myAgent.blockingReceive(mt1);
+					Somme+=Integer.valueOf(msg1.getContent());
+				}
+				break;
+			}
+		}
+
+		@Override
+		public boolean done() {
+			// TODO Auto-generated method stub
+			return false;
+		}
 
 	}
 
