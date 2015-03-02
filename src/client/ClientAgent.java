@@ -91,6 +91,7 @@ public class ClientAgent extends Agent{
 						ACLMessage reply = msg.createReply();
 						reply.setPerformative(ACLMessage.INFORM);
 						reply.setContent(String.valueOf(monthlyTotal));
+						reply.setConversationId("conso");
 						myAgent.send(reply);
 					}					
 				}

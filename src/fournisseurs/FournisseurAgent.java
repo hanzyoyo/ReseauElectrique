@@ -140,7 +140,7 @@ public class FournisseurAgent extends Agent{
 			}
 		});
 
-		addBehaviour(new CyclicBehaviour(this){
+		addBehaviour(new CyclicBehaviour(this) {
 			public void action(){
 				FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
 
@@ -150,54 +150,16 @@ public class FournisseurAgent extends Agent{
 				if (msg!=null){
 					int Somme=0;
 					for (int i=0;i<myFournisseur.clients.size();i++){
-						MessageTemplate mt1= MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(myFournisseur.getClients().get(i)));
+						MessageTemplate mt1= MessageTemplate.and(MessageTemplate.MatchConversationId("conso"),MessageTemplate.MatchSender(myFournisseur.getClients().get(i)));
 						ACLMessage msg1=myAgent.receive(mt1);
 						Somme+=Integer.valueOf(msg1.getContent());
 					}
-					System.out.println("Producteur "+myAgent.getName()+" a reÃ§u un top");
+					System.out.println("Producteur "+myAgent.getName()+" a reçu un top");
 
 					if (Integer.valueOf(msg.getContent())%12==0){
-						myAgent.addBehaviour(new OneShotBehaviour(this){
-							public void action(){
+						myAgent.addBehaviour(new TransportCheckBehaviour(Somme,myFournisseur));
 
-								double conso_stat=Somme/12;
-								
-								Somme=0;
-
-								DFAgentDescription template = new DFAgentDescription();
-								ServiceDescription sd = new ServiceDescription();
-								sd.setType("electricity-transporter");
-								template.addServices(sd);
-								try{
-									DFAgentDescription[] results = DFService.search(myAgent, template);
-									
-									ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-									msg.setContent("Demande Prix");
-									msg.addReceiver(results[0].getName());
-									myAgent.send(msg);
-									MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(results[0].getName()));
-									
-									ACLMessage msgt=myAgent.receive(mt);
-									if(msg!=null){
-										 ((FournisseurAgent) myAgent).setPrice_TIERS(Integer.valueOf(msgt.getContent()));
-									}else{
-										block();
-									}
-											
-								}catch(FIPAException e){
-									e.printStackTrace();
-								}
-
-								double deltat=(CF/(Math.min(myFournisseur.getCapamoy(),conso_stat)*(myFournisseur.getPrice_TIERS())));
-								if (LT>deltat){myFournisseur.setNb_transport_perso(myFournisseur.getNb_transport_perso()+1);}
-								else {}
-
-
-
-							}	
-
-						});
-					}
+					} // fin if
 					ACLMessage req = new ACLMessage(ACLMessage.REQUEST);
 					for (int i=0;i<myFournisseur.clients.size();i++){
 						req.addReceiver(myFournisseur.clients.get(i));
@@ -211,84 +173,84 @@ public class FournisseurAgent extends Agent{
 					block();
 				}
 			}
-		}}}
-});
-
-
-
-
-		protected void produire1kilo(){
-			this.volumerestant+=1;
-			this.capital+=-1;
-		}
-
-		//	protected void essaivendre(ClientAgent c){
-		//		if (c.veutELectricite && (c.getCapital()>this.prixaukilovente)){
-		//			this.volumerestant+=-1;
-		//			this.capital+=prixaukilovente;
-		//			c.setCapital(c.getCapital()-this.prixaukilovente);}
-		//		else {}
-		//	}
-
-		protected void takeDown() {
-			//de-register service
-			try{
-				DFService.deregister(this);
-			}
-			catch(FIPAException fe) {
-				fe.printStackTrace();
-			}
-			// Printout a dismissal message
-			System.out.println("Le fournisseur "+getAID().getName()+" ne vend plus d'electricitï¿½ï¿½.");
-		}
-
-		public int getLT() {
-			return LT;
-		}
-
-		public void setLT(int lT) {
-			LT = lT;
-		}
-
-		public int getCF() {
-			return CF;
-		}
-
-		public void setCF(int cF) {
-			CF = cF;
-		}
-
-		public int getCapamoy() {
-			return capamoy;
-		}
-
-		public void setCapamoy(int capamoy) {
-			this.capamoy = capamoy;
-		}
-
-		public int getPrice_TIERS() {
-			return price_TIERS;
-		}
-
-		public void setPrice_TIERS(int price_TIERS) {
-			this.price_TIERS = price_TIERS;
-		}
-
-		public int getNb_transport_perso() {
-			return nb_transport_perso;
-		}
-
-		public void setNb_transport_perso(int nb_transport_perso) {
-			this.nb_transport_perso = nb_transport_perso;
-		}
-
-		public ArrayList<AID> getClients() {
-			return clients;
-		}
-
-		public void setClients(ArrayList<AID> clients) {
-			this.clients = clients;
-		}
+		});
 
 
 	}
+
+
+	protected void produire1kilo(){
+		this.volumerestant+=1;
+		this.capital+=-1;
+	}
+
+	//	protected void essaivendre(ClientAgent c){
+	//		if (c.veutELectricite && (c.getCapital()>this.prixaukilovente)){
+	//			this.volumerestant+=-1;
+	//			this.capital+=prixaukilovente;
+	//			c.setCapital(c.getCapital()-this.prixaukilovente);}
+	//		else {}
+	//	}
+
+	protected void takeDown() {
+		//de-register service
+		try{
+			DFService.deregister(this);
+		}
+		catch(FIPAException fe) {
+			fe.printStackTrace();
+		}
+		// Printout a dismissal message
+		System.out.println("Le fournisseur "+getAID().getName()+" ne vend plus d'electricitï¿½ï¿½.");
+	}
+
+	public int getLT() {
+		return LT;
+	}
+
+	public void setLT(int lT) {
+		LT = lT;
+	}
+
+	public int getCF() {
+		return CF;
+	}
+
+	public void setCF(int cF) {
+		CF = cF;
+	}
+
+	public int getCapamoy() {
+		return capamoy;
+	}
+
+	public void setCapamoy(int capamoy) {
+		this.capamoy = capamoy;
+	}
+
+	public int getPrice_TIERS() {
+		return price_TIERS;
+	}
+
+	public void setPrice_TIERS(int price_TIERS) {
+		this.price_TIERS = price_TIERS;
+	}
+
+	public int getNb_transport_perso() {
+		return nb_transport_perso;
+	}
+
+	public void setNb_transport_perso(int nb_transport_perso) {
+		this.nb_transport_perso = nb_transport_perso;
+	}
+
+	public ArrayList<AID> getClients() {
+		return clients;
+	}
+
+	public void setClients(ArrayList<AID> clients) {
+		this.clients = clients;
+	}
+
+
+}
