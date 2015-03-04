@@ -29,6 +29,7 @@ public class GUI extends Agent{
 	private ZModel model = new ZModel();
 	private Hashtable<AID, DataProducer> table = new Hashtable<>();
 	private JTable tableau;
+	private JFrame fenetre2;
 
 	public Hashtable<AID, DataProducer> getTable() {
 		return table;
@@ -96,13 +97,14 @@ public class GUI extends Agent{
 					}
 					
 					tableau.revalidate();
+					fenetre2.repaint();
 				}else{
 					block();
 				}
 			}
 		});
 
-		JFrame fenetre2 = new JFrame("Réseau Electrique");
+		fenetre2 = new JFrame("Réseau Electrique");
 		fenetre2.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		fenetre2.setPreferredSize(new Dimension(600, 400));
 

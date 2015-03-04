@@ -18,7 +18,7 @@ import jade.lang.acl.MessageTemplate;
 
 public class ClientAgent extends Agent{
 	private int meanConsumption;
-	private int varianceConsumption;
+	private int varianceConsumption = 5;
 
 	private int meanProduction = 0;
 	private int varianceProduction = 0;
@@ -50,10 +50,11 @@ public class ClientAgent extends Agent{
 		Object[] args = getArguments();
 
 		if(args != null &&	args.length > 0) {
-			meanConsumption	= (int) args[0];
+			meanConsumption	= Integer.parseInt((String) args[0]);
 			if (args.length > 1){
-				meanProduction = (int) args[1];
+				meanProduction = Integer.parseInt((String) args[1]);
 			}
+			monthlyTotal = meanConsumption - meanProduction;
 		}
 
 		//add one-shot behavior to subscribe to Producer

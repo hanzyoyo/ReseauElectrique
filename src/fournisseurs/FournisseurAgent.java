@@ -1,13 +1,11 @@
 package fournisseurs;
 import java.util.ArrayList;
 
-import client.ClientAgent;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
-import jade.core.behaviours.WakerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -107,6 +105,9 @@ public class FournisseurAgent extends Agent{
 						else if(msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL){
 							//ajout du client dans la base
 							myFournisseur.clients.add(msg.getSender());
+							
+							//envoi de l'information à la GUI
+							myAgent.addBehaviour(new EnvoiGUI("Nombre de clients", myFournisseur.clients.size()));
 							
 							//lui confirmer
 							ACLMessage reply2=msg.createReply();
