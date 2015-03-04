@@ -250,9 +250,13 @@ public class FournisseurAgent extends Agent{
 					//Rajout d'une dynamique de flux d'argent sur le portefeuille (variable capital)
 					myFournisseur.capital-=(this.somme)*myFournisseur.prixaukiloproduction; //payer la production
 					
+					myAgent.addBehaviour(new findprice_TIERS());
+					
 					myFournisseur.capital-=(this.somme-Math.min(myFournisseur.capamoy*myFournisseur.nb_transport_perso,this.somme))*myFournisseur.price_TIERS;//payer le transport
 					
 					myFournisseur.capital+=(this.somme)*myFournisseur.prixaukilovente; //Les clients qui ont répondu à la REQUEST ont payé
+					
+					
 					
 					
 				}
@@ -284,7 +288,46 @@ public class FournisseurAgent extends Agent{
 		}
 
 	}
+	public class findprice_TIERS extends Behaviour{
+		private boolean b=false;
+		public void action() {
+			//contacter le DFService pour obtenir le price_TIERS
+			DFAgentDescription template = new DFAgentDescription();
+			ServiceDescription sd = new ServiceDescription();
+			sd.setType("electricity-transporter");
+			template.addServices(sd);
+			
+			
+			try{
+				DFAgentDescription[] results = DFService.search(myAgent, template);
 
+				ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+				msg.setContent("Demande Prix");
+				msg.addReceiver(results[0].getName());
+				myAgent.send(msg);
+				MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(results[0].getName()));
+
+				/* step 1 j'ï¿½cris , step 2 je lis et block si rien, step 3 je traite (ou directement step 2)
+				 * Pas OneShot mais Behaviour avec un done ï¿½ la main */
+				
+				ACLMessage msgt=myAgent.receive(mt);
+				if(msgt!=null){
+					((FournisseurAgent) myAgent).setPrice_TIERS(Integer.valueOf(msgt.getContent()));
+					b=true;
+				}else{
+					block();
+				}
+
+			}catch(FIPAException e){
+				e.printStackTrace();
+			}
+			
+	}
+		public boolean done(){
+			if (b){return true;}
+			return false;
+			}
+	}
 
 	protected void produire1kilo(){
 		this.volumerestant+=1;
