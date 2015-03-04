@@ -213,6 +213,7 @@ public class FournisseurAgent extends Agent{
 		private int step = 0;
 		private double somme = 0;
 		private boolean finAnnee;
+		private boolean firsttime=true;
 		
 		public FacturationClient(Behaviour parentBehaviour, boolean finAnnee){
 			this.parentBehaviour = parentBehaviour;
@@ -249,8 +250,9 @@ public class FournisseurAgent extends Agent{
 					this.somme+=Double.valueOf(msg1.getContent());
 					//Rajout d'une dynamique de flux d'argent sur le portefeuille (variable capital)
 					myFournisseur.capital-=(this.somme)*myFournisseur.prixaukiloproduction; //payer la production
-					
-					myAgent.addBehaviour(new findprice_TIERS());
+					if (firsttime){
+					myAgent.addBehaviour(new findprice_TIERS());//le behaviour est executé jusqu'à trouver le prix comme le prix ne change pas elle n'est executée qu'une fois
+					firsttime=false;}
 					
 					myFournisseur.capital-=(this.somme-Math.min(myFournisseur.capamoy*myFournisseur.nb_transport_perso,this.somme))*myFournisseur.price_TIERS;//payer le transport
 					
