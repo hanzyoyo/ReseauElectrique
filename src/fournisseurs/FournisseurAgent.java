@@ -15,10 +15,10 @@ import jade.lang.acl.MessageTemplate;
 
 public class FournisseurAgent extends Agent{
 
-	private int prixaukilovente = 10;
+	private int prixaukilovente = 15;
 	private int prixaukiloproduction;
 	private int volumerestant;
-	private int capital;
+	private double capital=100000;
 	private ArrayList<AID> clients = new ArrayList<AID>();
 	private int demande=0;
 	private int LT=3;  //Durï¿½e long terme
@@ -247,6 +247,14 @@ public class FournisseurAgent extends Agent{
 					System.out.println("Producteur " + myAgent.getLocalName() + " a reÃ§u consommation du client " + msg1.getSender().getLocalName());
 					
 					this.somme+=Double.valueOf(msg1.getContent());
+					//Rajout d'une dynamique de flux d'argent sur le portefeuille (variable capital)
+					myFournisseur.capital-=(this.somme)*myFournisseur.prixaukiloproduction; //payer la production
+					
+					myFournisseur.capital-=(this.somme-Math.min(myFournisseur.capamoy*myFournisseur.nb_transport_perso,this.somme))*myFournisseur.price_TIERS;//payer le transport
+					
+					myFournisseur.capital+=(this.somme)*myFournisseur.prixaukilovente; //Les clients qui ont répondu à la REQUEST ont payé
+					
+					
 				}
 				step = 2;
 				break;
