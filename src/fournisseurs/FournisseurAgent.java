@@ -2,7 +2,6 @@ package fournisseurs;
 import java.util.ArrayList;
 
 import client.ClientAgent;
-import client.ClientAgent.SubscriptionBehaviour;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
@@ -65,6 +64,7 @@ public class FournisseurAgent extends Agent{
 			}
 		});
 
+		//comportement gérant l'abonnement avec les clients
 		addBehaviour(new CyclicBehaviour(this){
 			private int step = 0;
 			public void action() {
@@ -122,36 +122,103 @@ public class FournisseurAgent extends Agent{
 			}
 		});
 
-		addBehaviour(new CyclicBehaviour(this) {
-			public void action(){
-
-				MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchConversationId("top"));
-				ACLMessage msg=myAgent.receive(mt);
-
-				if (msg!=null){
-					//log
-					System.out.println("Producteur "+myAgent.getName()+" a reçu un top");
-					
-					myAgent.addBehaviour(new MonthlyBehaviour());	
-
-					if (Integer.valueOf(msg.getContent())%12==0){
-						myAgent.addBehaviour(new TransportCheckBehaviour(Somme,myFournisseur));
-					}
-				}
-				else {
-					block();
-				}
-			}
-		});
+		//ajout du comportement du fournisseur en fin de mois (facturation, éventuelle prise de décision de créer un réseau de transport...)
+		addBehaviour(new MonthlyBehaviour());
 
 
 	}
+	
+	public class MonthlyBehaviour extends CyclicBehaviour{
+		private int Somme;
+		private FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
+		
+		public void setSomme(int somme){
+			this.Somme = somme;
+		}
+		
+		public int getSomme(){
+			return Somme;
+		}
+		
+		public void action(){
 
-	public class MonthlyBehaviour extends Behaviour{
+			MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchConversationId("top"));
+			ACLMessage msg=myAgent.receive(mt);
+
+			if (msg!=null){
+				//log
+				System.out.println("Producteur "+myAgent.getName()+" a reçu un top");
+				Somme = 0;
+				myAgent.addBehaviour(new FacturationClient(this));	
+				
+				//MaJ de la GUI
+				myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", Somme));				
+
+				//on recalcule nos investissements tous les ans
+				if (Integer.valueOf(msg.getContent())%12==0){
+					myAgent.addBehaviour(new TransportCheckBehaviour(Somme,myFournisseur));
+				}
+			}
+			else {
+				block();
+			}
+		}
+	}
+	
+	public class EnvoiGUI extends Behaviour{
+		private String champ;
+		private int valeur;
+		
+		public EnvoiGUI(String champ, int valeur){
+			this.champ = champ;
+			this.valeur = valeur;
+		}
+
+		@Override
+		public void action() {
+			//contacter le DFService pour obtenir l'AID de la GUI
+			DFAgentDescription template = new DFAgentDescription();
+			ServiceDescription sd = new ServiceDescription();
+			sd.setType("electricity-producer");
+			template.addServices(sd);
+			try{
+				DFAgentDescription[] results = DFService.search(myAgent, template);
+				
+				AID gui = results[0].getName();
+				
+				//envoi de la nouvelle production mensuelle à la GUI
+				ACLMessage inf = new ACLMessage(ACLMessage.INFORM);
+				inf.addReceiver(gui);
+				//on se sert du conversationID pour passer le champ à MaJ
+				inf.setConversationId(champ);
+				inf.setContent(String.valueOf(valeur));
+				
+			}catch(FIPAException e){
+				e.printStackTrace();
+			}
+			
+		}
+
+		@Override
+		public boolean done() {
+			// TODO Auto-generated method stub
+			return false;
+		}
+		
+	}
+
+	public class FacturationClient extends Behaviour{
 
 		private FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
+		private Behaviour parentBehaviour;
 		private int step = 0;
-
+		private int somme = 0;
+		
+		public FacturationClient(Behaviour parentBehaviour){
+			this.parentBehaviour = parentBehaviour;
+		}
+		
+		
 		@Override
 		public void action() {
 			switch(step){
@@ -169,21 +236,24 @@ public class FournisseurAgent extends Agent{
 				step = 1;
 				break;
 			case 1:
-
-				int Somme=0;
 				for (int i=0;i<myFournisseur.clients.size();i++){
 					MessageTemplate mt1= MessageTemplate.and(MessageTemplate.MatchConversationId("conso"),MessageTemplate.MatchSender(myFournisseur.getClients().get(i)));
 					ACLMessage msg1=myAgent.blockingReceive(mt1);
-					Somme+=Integer.valueOf(msg1.getContent());
+					this.somme+=Integer.valueOf(msg1.getContent());
 				}
+				step = 2;
 				break;
 			}
 		}
 
 		@Override
 		public boolean done() {
-			// TODO Auto-generated method stub
-			return false;
+			if(step == 2){
+				//TODO : make parent behaviour not anonymous class to cast
+				((MonthlyBehaviour)this.parentBehaviour).setSomme(this.somme);
+				return true;
+			}else
+				return false;
 		}
 
 	}
