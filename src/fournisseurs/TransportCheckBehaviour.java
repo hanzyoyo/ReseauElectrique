@@ -11,11 +11,11 @@ import jade.lang.acl.MessageTemplate;
 
 public class TransportCheckBehaviour extends OneShotBehaviour {
 
-	private int Somme;
+	private double Somme;
 	private FournisseurAgent myFournisseur;
 	
-	public TransportCheckBehaviour(int somme, FournisseurAgent myFournisseur) {
-		Somme = somme;
+	public TransportCheckBehaviour(double somme2, FournisseurAgent myFournisseur) {
+		Somme = somme2;
 		this.myFournisseur = myFournisseur;
 	}
 
@@ -39,8 +39,8 @@ public class TransportCheckBehaviour extends OneShotBehaviour {
 			myAgent.send(msg);
 			MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(results[0].getName()));
 
-			/* step 1 j'écris , step 2 je lis et block si rien, step 3 je traite (ou directement step 2)
-			 * Pas OneShot mais Behaviour avec un done à la main */
+			/* step 1 j'ï¿½cris , step 2 je lis et block si rien, step 3 je traite (ou directement step 2)
+			 * Pas OneShot mais Behaviour avec un done ï¿½ la main */
 			
 			ACLMessage msgt=myAgent.receive(mt);
 			if(msgt!=null){
@@ -52,7 +52,7 @@ public class TransportCheckBehaviour extends OneShotBehaviour {
 		}catch(FIPAException e){
 			e.printStackTrace();
 		}
-		/*décision */
+		/*dï¿½cision */
 		double deltat=(myFournisseur.getCF()/(Math.min(myFournisseur.getCapamoy(),conso_stat)*(myFournisseur.getPrice_TIERS())));
 		if (myFournisseur.getLT()>deltat){myFournisseur.setNb_transport_perso(myFournisseur.getNb_transport_perso()+1);}
 		else {}

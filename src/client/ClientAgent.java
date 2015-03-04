@@ -60,7 +60,7 @@ public class ClientAgent extends Agent{
 		addBehaviour(new SubscriptionBehaviour());
 
 		//add ticked behavior to simulate random consumption every month
-		/*addBehaviour(new TickerBehaviour(this,5000) {
+		addBehaviour(new TickerBehaviour(this,5000) {
 
 			@Override
 			protected void onTick() {
@@ -70,30 +70,27 @@ public class ClientAgent extends Agent{
 				double newProduction = rndm.nextGaussian() * varianceProduction + meanProduction;
 				monthlyTotal = newConsumption - newProduction;
 			}
-		});*/
+		});
 
 		//add cyclic behavior to handle requests for monthly consumption
 		addBehaviour(new CyclicBehaviour(this) {
 
 			@Override
 			public void action() {
-				
+
 				ClientAgent myClient = (ClientAgent)myAgent;
 				MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchSender(myClient.producer.getName()), MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
 				ACLMessage msg = myAgent.receive(mt);
 
 				if(msg != null){
 					//log
-					System.out.println("Client "+myClient.getName()+" a reçu une demande de consommation");
+					System.out.println("Client "+myClient.getLocalName()+" a reçu une demande de consommation");
 
-					//if received message is a request from the agent's producer send monthly consumption
-					if(msg.getSender() == ((ClientAgent)myAgent).producer.getName() && msg.getPerformative() == ACLMessage.REQUEST){
-						ACLMessage reply = msg.createReply();
-						reply.setPerformative(ACLMessage.INFORM);
-						reply.setContent(String.valueOf(monthlyTotal));
-						reply.setConversationId("conso");
-						myAgent.send(reply);
-					}					
+					ACLMessage reply = msg.createReply();
+					reply.setPerformative(ACLMessage.INFORM);
+					reply.setContent(String.valueOf(monthlyTotal));
+					reply.setConversationId("conso");
+					myAgent.send(reply);				
 				}
 				else{
 					block();
@@ -109,7 +106,7 @@ public class ClientAgent extends Agent{
 
 		@Override
 		public void action() {
-			
+
 			MessageTemplate mt = null;
 
 			// consult DFService and take first (for now) Producer
@@ -136,7 +133,7 @@ public class ClientAgent extends Agent{
 						mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Demande Prix"),MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
 
 						//log
-						System.out.println("Agent " + myAgent.getName() + " envoie CFP");
+						System.out.println("Agent " + myAgent.getLocalName() + " envoie CFP");
 
 						step=1;
 						break;
@@ -145,7 +142,7 @@ public class ClientAgent extends Agent{
 						if(reply != null){						
 							if(reply.getPerformative() == ACLMessage.PROPOSE){ //what if message received is an information but not on the prices?
 								//log
-								System.out.println("Client "+ myAgent.getName() + " reçoit proposition du Producteur " + reply.getSender());
+								System.out.println("Client "+ myAgent.getLocalName() + " reçoit proposition du Producteur " + reply.getSender().getLocalName());
 
 								//keep producer with cheapest price
 								int price = Integer.parseInt(reply.getContent());
@@ -181,7 +178,7 @@ public class ClientAgent extends Agent{
 						myAgent.send(msg);
 
 						//log
-						System.out.println("Agent " + myAgent.getName() + " envoie demande d'abonnement au Producteur " + ((ClientAgent)myAgent).producer.getName());
+						System.out.println("Agent " + myAgent.getLocalName() + " envoie demande d'abonnement au Producteur " + ((ClientAgent)myAgent).producer.getName().getLocalName());
 
 						mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Subscription"),MessageTemplate.MatchInReplyTo(msg.getReplyWith()));
 						step=3;
@@ -191,7 +188,8 @@ public class ClientAgent extends Agent{
 						reply = myAgent.receive(mt);
 						if(reply != null){
 							if(reply.getPerformative() == ACLMessage.INFORM){
-								System.out.println("Client "+myAgent.getName()+" est abonné au Producteur "+reply.getSender());
+								//log
+								System.out.println("Client "+myAgent.getLocalName()+" est abonné au Producteur "+reply.getSender().getLocalName());
 								step=4;
 							}
 						}

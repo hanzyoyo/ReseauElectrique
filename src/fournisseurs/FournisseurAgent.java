@@ -83,7 +83,7 @@ public class FournisseurAgent extends Agent{
 						myAgent.send(reply1);
 
 						//log
-						System.out.println("Producteur " + myAgent.getName() + " envoie proposition au Client " + (AID)reply1.getAllReceiver().next());
+						System.out.println("Producteur " + myAgent.getLocalName() + " envoie proposition au Client " + ((AID)reply1.getAllReceiver().next()).getLocalName());
 
 						step++;
 					}
@@ -99,19 +99,23 @@ public class FournisseurAgent extends Agent{
 						if (msg.getPerformative() == ACLMessage.REJECT_PROPOSAL){
 
 							//log
-							System.out.println("Agent " + msg.getSender() + " refuse la proposition.");
+							System.out.println("Agent " + msg.getSender().getLocalName() + " refuse la proposition.");
 
 							step+=-1;
 							break;
 						}
 						else if(msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL){
+							//ajout du client dans la base
 							myFournisseur.clients.add(msg.getSender());
+							
+							//lui confirmer
 							ACLMessage reply2=msg.createReply();
 							reply2.setPerformative(ACLMessage.INFORM);
 							myAgent.send(reply2);
+							
 
 							//log
-							System.out.println("Producteur " + myAgent.getName() + " confirme l'abonnement du Client " + msg.getAllReceiver());
+							System.out.println("Producteur " + myAgent.getLocalName() + " confirme l'abonnement du Client " + ((AID)reply2.getAllReceiver().next()).getLocalName());
 
 							step = 0;
 						}
@@ -129,14 +133,14 @@ public class FournisseurAgent extends Agent{
 	}
 	
 	public class MonthlyBehaviour extends CyclicBehaviour{
-		private int Somme;
+		private double Somme;
 		private FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
 		
-		public void setSomme(int somme){
+		public void setSomme(double somme){
 			this.Somme = somme;
 		}
 		
-		public int getSomme(){
+		public double getSomme(){
 			return Somme;
 		}
 		
@@ -147,17 +151,12 @@ public class FournisseurAgent extends Agent{
 
 			if (msg!=null){
 				//log
-				System.out.println("Producteur "+myAgent.getName()+" a reçu un top");
+				System.out.println("Producteur "+myAgent.getLocalName()+" a reçu un top");
 				Somme = 0;
-				myAgent.addBehaviour(new FacturationClient(this));	
+				boolean finAnnee = Integer.valueOf(msg.getContent())%12==0;
+				myAgent.addBehaviour(new FacturationClient(this,finAnnee));	
 				
-				//MaJ de la GUI
-				myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", Somme));				
-
-				//on recalcule nos investissements tous les ans
-				if (Integer.valueOf(msg.getContent())%12==0){
-					myAgent.addBehaviour(new TransportCheckBehaviour(Somme,myFournisseur));
-				}
+				
 			}
 			else {
 				block();
@@ -165,11 +164,11 @@ public class FournisseurAgent extends Agent{
 		}
 	}
 	
-	public class EnvoiGUI extends Behaviour{
+	public class EnvoiGUI extends OneShotBehaviour{
 		private String champ;
-		private int valeur;
+		private double valeur;
 		
-		public EnvoiGUI(String champ, int valeur){
+		public EnvoiGUI(String champ, double valeur){
 			this.champ = champ;
 			this.valeur = valeur;
 		}
@@ -179,7 +178,7 @@ public class FournisseurAgent extends Agent{
 			//contacter le DFService pour obtenir l'AID de la GUI
 			DFAgentDescription template = new DFAgentDescription();
 			ServiceDescription sd = new ServiceDescription();
-			sd.setType("electricity-producer");
+			sd.setType("gui");
 			template.addServices(sd);
 			try{
 				DFAgentDescription[] results = DFService.search(myAgent, template);
@@ -193,53 +192,60 @@ public class FournisseurAgent extends Agent{
 				inf.setConversationId(champ);
 				inf.setContent(String.valueOf(valeur));
 				
+				myAgent.send(inf);
+				
+				//log
+				System.out.println("Producteur " + myAgent.getLocalName() + " a envoyé une nouvelle valeur pour " + champ);
+				
 			}catch(FIPAException e){
 				e.printStackTrace();
 			}
 			
-		}
-
-		@Override
-		public boolean done() {
-			// TODO Auto-generated method stub
-			return false;
 		}
 		
 	}
 
 	public class FacturationClient extends Behaviour{
 
-		private FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
+		private FournisseurAgent myFournisseur;
 		private Behaviour parentBehaviour;
 		private int step = 0;
-		private int somme = 0;
+		private double somme = 0;
+		private boolean finAnnee;
 		
-		public FacturationClient(Behaviour parentBehaviour){
+		public FacturationClient(Behaviour parentBehaviour, boolean finAnnee){
 			this.parentBehaviour = parentBehaviour;
+			this.finAnnee = finAnnee;
 		}
 		
 		
 		@Override
 		public void action() {
+			myFournisseur = (FournisseurAgent)myAgent;
+			
 			switch(step){
 			case 0:
 				//demande des consommations aux clients
 				ACLMessage req = new ACLMessage(ACLMessage.REQUEST);
-				for (int i=0;i<myFournisseur.clients.size();i++){
+				for (int i=0; i < myFournisseur.clients.size(); i++){
 					req.addReceiver(myFournisseur.clients.get(i));
 				}
 				myFournisseur.send(req);
 
 				//log
-				System.out.println("Producteur "+myFournisseur.getName()+" a envoyé les demandes de consommation");
+				System.out.println("Producteur "+myFournisseur.getLocalName()+" a envoyé les demandes de consommation");
 
 				step = 1;
 				break;
 			case 1:
-				for (int i=0;i<myFournisseur.clients.size();i++){
+				for (int i = 0; i< myFournisseur.clients.size(); i++){
 					MessageTemplate mt1= MessageTemplate.and(MessageTemplate.MatchConversationId("conso"),MessageTemplate.MatchSender(myFournisseur.getClients().get(i)));
 					ACLMessage msg1=myAgent.blockingReceive(mt1);
-					this.somme+=Integer.valueOf(msg1.getContent());
+					
+					//log
+					System.out.println("Producteur " + myAgent.getLocalName() + " a reçu consommation du client " + msg1.getSender().getLocalName());
+					
+					this.somme+=Double.valueOf(msg1.getContent());
 				}
 				step = 2;
 				break;
@@ -249,9 +255,21 @@ public class FournisseurAgent extends Agent{
 		@Override
 		public boolean done() {
 			if(step == 2){
-				//TODO : make parent behaviour not anonymous class to cast
-				((MonthlyBehaviour)this.parentBehaviour).setSomme(this.somme);
+				//debug
+				System.out.println("Facturation finie");
+				
+				//TODO : toujours nécessaire?
+				((MonthlyBehaviour)parentBehaviour).setSomme(somme);
+				
+				//MaJ de la GUI
+				myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", somme));
+
+				//on recalcule nos investissements tous les ans
+				if(this.finAnnee){
+						myAgent.addBehaviour(new TransportCheckBehaviour(somme,myFournisseur));
+				}				
 				return true;
+				
 			}else
 				return false;
 		}

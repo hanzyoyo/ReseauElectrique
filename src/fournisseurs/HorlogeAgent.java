@@ -10,7 +10,7 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
 
 public class HorlogeAgent extends Agent{
-	private int msPerMonth = 20000;
+	private int msPerMonth = 5000;
 
 	public void setup(){
 		Object[] args = getArguments();

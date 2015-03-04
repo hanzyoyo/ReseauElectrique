@@ -4,6 +4,11 @@ package gui;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.OneShotBehaviour;
+import jade.domain.DFService;
+import jade.domain.FIPAException;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
@@ -35,6 +40,30 @@ public class GUI extends Agent{
 
 	public void setup(){
 		
+		//comportement qui inscrit l'agent gui au DFService
+		addBehaviour(new OneShotBehaviour(this) {
+			//subscribe to DFService as producer of electricity
+			@Override
+			public void action() {
+				// TODO Auto-generated method stub
+				DFAgentDescription dfd = new DFAgentDescription();
+				dfd.setName(getAID());
+				ServiceDescription sd =	new	ServiceDescription();
+				sd.setType("gui");
+				sd.setName("gui");
+				dfd.addServices(sd);
+				try{
+					DFService.register(myAgent, dfd);
+					
+					//log
+					System.out.println("GUI enregistrée auprès du DF");
+				}
+				catch(FIPAException fe) {
+					fe.printStackTrace();
+				}
+			}
+		});
+		
 		//comportement qui traite le flux d'informations des producteurs pour MaJ la GUI
 		addBehaviour(new CyclicBehaviour(this) {
 			
@@ -45,7 +74,7 @@ public class GUI extends Agent{
 				ACLMessage msg = myAgent.receive(mt);
 				if(msg != null){
 					//log
-					System.out.println("GUI a reçu un message du fournisseur : "+msg.getSender());
+					System.out.println("GUI a reçu un message du fournisseur : "+msg.getSender().getLocalName());
 					
 					AID fournisseur = msg.getSender();
 					String champ = msg.getConversationId();
@@ -59,11 +88,11 @@ public class GUI extends Agent{
 					//change the value of the field
 					//TODO: constantes globales pour éviter les divergences en cas de MaJ
 					if(champ.equals("Nombre de clients")){
-						table.get(fournisseur).setNbClients(Integer.valueOf(valeur));
+						table.get(fournisseur).setNbClients((int)Double.parseDouble(valeur));
 					}else if(champ.equals("Production mensuelle")){
-						table.get(fournisseur).setProdMensuelle(Integer.valueOf(valeur));
+						table.get(fournisseur).setProdMensuelle(Double.parseDouble(valeur));
 					}else if(champ.equals("Production totale")){
-						table.get(fournisseur).setProdTotale(Integer.valueOf(valeur));						
+						table.get(fournisseur).setProdTotale(Double.parseDouble(valeur));						
 					}
 					
 					tableau.revalidate();
@@ -88,8 +117,8 @@ public class GUI extends Agent{
 
 	class DataProducer{
 		private int nbClients = 0;
-		private int prodMensuelle = 0;
-		private int prodTotale = 0;
+		private double prodMensuelle = 0;
+		private double prodTotale = 0;
 
 		public int getNbClients() {
 			return nbClients;
@@ -97,16 +126,16 @@ public class GUI extends Agent{
 		public void setNbClients(int nbClients) {
 			this.nbClients = nbClients;
 		}
-		public int getProdMensuelle() {
+		public double getProdMensuelle() {
 			return prodMensuelle;
 		}
-		public void setProdMensuelle(int prodMensuelle) {
+		public void setProdMensuelle(double prodMensuelle) {
 			this.prodMensuelle = prodMensuelle;
 		}
-		public int getProdTotale() {
+		public double getProdTotale() {
 			return prodTotale;
 		}
-		public void setProdTotale(int prodTotale) {
+		public void setProdTotale(double prodTotale) {
 			this.prodTotale = prodTotale;
 		}
 	}
@@ -133,10 +162,14 @@ public class GUI extends Agent{
 		//Retourne la valeur à l'emplacement spécifié
 		public Object getValueAt(int row, int col) {
 			if (col == 0) {
-				return getKey(row);
-			} else {
-				return table.get(getKey(row));
-			}
+				return getKey(row).getLocalName();
+			} else if (col == 1){
+				return table.get(getKey(row)).getNbClients();
+			} else if (col == 2){
+				return table.get(getKey(row)).getProdMensuelle();
+			}else {
+				return table.get(getKey(row)).getProdTotale();
+			} 
 		}         
 
 		private AID getKey(int a_index) {
