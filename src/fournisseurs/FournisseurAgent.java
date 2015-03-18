@@ -115,10 +115,10 @@ public class FournisseurAgent extends Agent{
 						else if(msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL){
 							//ajout du client dans la base
 							myFournisseur.clients.add(msg.getSender());
-
+							
 							//envoi de l'information à la GUI
 							myAgent.addBehaviour(new EnvoiGUI("Nombre de clients", myFournisseur.clients.size()));
-
+							
 							//lui confirmer
 							ACLMessage reply2=msg.createReply();
 							reply2.setPerformative(ACLMessage.INFORM);
@@ -273,159 +273,157 @@ public class FournisseurAgent extends Agent{
 					if (firsttime){
 					myAgent.addBehaviour(new findprice_TIERS());//le behaviour est execut� jusqu'� trouver le prix comme le prix ne change pas elle n'est execut�e qu'une fois
 					firsttime=false;}
-					if (firsttime){
-					myAgent.addBehaviour(new findprice_TIERS());//le behaviour est execut� jusqu'� trouver le prix comme le prix ne change pas elle n'est execut�e qu'une fois
-					firsttime=false;}
-
+					
 					myFournisseur.capital-=(this.somme-Math.min(myFournisseur.capamoy*myFournisseur.nb_transport_perso,this.somme))*myFournisseur.price_TIERS;//payer le transport
-
+					
 					myFournisseur.capital+=(this.somme)*myFournisseur.prixaukilovente; //Les clients qui ont r�pondu � la REQUEST ont pay�
 
 
-					
-					
-				}
-				step = 2;
-				break;
 			}
+			step = 2;
+			break;
 		}
-
-		@Override
-		public boolean done() {
-			if(step == 2){
-				//debug
-				System.out.println("Facturation finie");
-
-				//TODO : toujours nécessaire?
-				((MonthlyBehaviour)parentBehaviour).setSomme(somme);
-
-				//MaJ de la GUI
-				myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", somme));
-
-				//on recalcule nos investissements tous les ans
-				if(this.finAnnee){
-						myAgent.addBehaviour(new TransportCheckBehaviour(somme,myFournisseur));
-				}				
-				return true;
-
-			}else
-				return false;
-		}
-
 	}
-	public class findprice_TIERS extends Behaviour{
-		private boolean b=false;
-		public void action() {
-			//contacter le DFService pour obtenir le price_TIERS
-			DFAgentDescription template = new DFAgentDescription();
-			ServiceDescription sd = new ServiceDescription();
-			sd.setType("electricity-transporter");
-			template.addServices(sd);
-			
-			
-			try{
-				DFAgentDescription[] results = DFService.search(myAgent, template);
 
-				ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-				msg.setContent("Demande Prix");
-				msg.addReceiver(results[0].getName());
-				myAgent.send(msg);
-				MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(results[0].getName()));
+	@Override
+	public boolean done() {
+		if(step == 2){
+			//debug
+			System.out.println("Facturation finie");
 
-				/* step 1 j'�cris , step 2 je lis et block si rien, step 3 je traite (ou directement step 2)
-				 * Pas OneShot mais Behaviour avec un done � la main */
-				
-				ACLMessage msgt=myAgent.receive(mt);
-				if(msgt!=null){
-					((FournisseurAgent) myAgent).setPrice_TIERS(Integer.valueOf(msgt.getContent()));
-					b=true;
-				}else{
-					block();
-				}
+			//TODO : toujours nécessaire?
+			((MonthlyBehaviour)parentBehaviour).setSomme(somme);
 
-			}catch(FIPAException e){
-				e.printStackTrace();
-			}
-			
-	}
-		public boolean done(){
-			if (b){return true;}
+			//MaJ de la GUI
+			myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", somme));
+
+			//on recalcule nos investissements tous les ans
+			if(this.finAnnee){
+				myAgent.addBehaviour(new TransportCheckBehaviour(somme,myFournisseur));
+			}				
+			return true;
+
+		}else
 			return false;
-			}
 	}
 
-	protected void produire1kilo(){
-		this.volumerestant+=1;
-		this.capital+=-1;
-	}
+}
+public class findprice_TIERS extends Behaviour{
+	private boolean b=false;
+	public void action() {
+		//contacter le DFService pour obtenir le price_TIERS
+		DFAgentDescription template = new DFAgentDescription();
+		ServiceDescription sd = new ServiceDescription();
+		sd.setType("electricity-transporter");
+		template.addServices(sd);
 
-	//	protected void essaivendre(ClientAgent c){
-	//		if (c.veutELectricite && (c.getCapital()>this.prixaukilovente)){
-	//			this.volumerestant+=-1;
-	//			this.capital+=prixaukilovente;
-	//			c.setCapital(c.getCapital()-this.prixaukilovente);}
-	//		else {}
-	//	}
-
-	protected void takeDown() {
-		//de-register service
+		
+		
+		
+		
 		try{
-			DFService.deregister(this);
+			DFAgentDescription[] results = DFService.search(myAgent, template);
+
+			ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+			msg.setContent("Demande Prix");
+			msg.addReceiver(results[0].getName());
+			myAgent.send(msg);
+			MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(results[0].getName()));
+
+			/* step 1 j'�cris , step 2 je lis et block si rien, step 3 je traite (ou directement step 2)
+			 * Pas OneShot mais Behaviour avec un done � la main */
+
+			ACLMessage msgt=myAgent.receive(mt);
+			if(msgt!=null){
+				((FournisseurAgent) myAgent).setPrice_TIERS(Integer.valueOf(msgt.getContent()));
+				b=true;
+			}else{
+				block();
+			}
+
+		}catch(FIPAException e){
+			e.printStackTrace();
 		}
-		catch(FIPAException fe) {
-			fe.printStackTrace();
-		}
-		// Printout a dismissal message
-		System.out.println("Le fournisseur "+getAID().getName()+" ne vend plus d'electricit��.");
-	}
 
-	public int getLT() {
-		return LT;
 	}
+	public boolean done(){
+		if (b){return true;}
+		return false;
+	}
+}
 
-	public void setLT(int lT) {
-		LT = lT;
-	}
+protected void produire1kilo(){
+	this.volumerestant+=1;
+	this.capital+=-1;
+}
 
-	public int getCF() {
-		return CF;
-	}
+//	protected void essaivendre(ClientAgent c){
+//		if (c.veutELectricite && (c.getCapital()>this.prixaukilovente)){
+//			this.volumerestant+=-1;
+//			this.capital+=prixaukilovente;
+//			c.setCapital(c.getCapital()-this.prixaukilovente);}
+//		else {}
+//	}
 
-	public void setCF(int cF) {
-		CF = cF;
+protected void takeDown() {
+	//de-register service
+	try{
+		DFService.deregister(this);
 	}
+	catch(FIPAException fe) {
+		fe.printStackTrace();
+	}
+	// Printout a dismissal message
+	System.out.println("Le fournisseur "+getAID().getName()+" ne vend plus d'electricit��.");
+}
 
-	public int getCapamoy() {
-		return capamoy;
-	}
+public int getLT() {
+	return LT;
+}
 
-	public void setCapamoy(int capamoy) {
-		this.capamoy = capamoy;
-	}
+public void setLT(int lT) {
+	LT = lT;
+}
 
-	public int getPrice_TIERS() {
-		return price_TIERS;
-	}
+public int getCF() {
+	return CF;
+}
 
-	public void setPrice_TIERS(int price_TIERS) {
-		this.price_TIERS = price_TIERS;
-	}
+public void setCF(int cF) {
+	CF = cF;
+}
 
-	public int getNb_transport_perso() {
-		return nb_transport_perso;
-	}
+public int getCapamoy() {
+	return capamoy;
+}
 
-	public void setNb_transport_perso(int nb_transport_perso) {
-		this.nb_transport_perso = nb_transport_perso;
-	}
+public void setCapamoy(int capamoy) {
+	this.capamoy = capamoy;
+}
 
-	public ArrayList<AID> getClients() {
-		return clients;
-	}
+public int getPrice_TIERS() {
+	return price_TIERS;
+}
 
-	public void setClients(ArrayList<AID> clients) {
-		this.clients = clients;
-	}
+public void setPrice_TIERS(int price_TIERS) {
+	this.price_TIERS = price_TIERS;
+}
+
+public int getNb_transport_perso() {
+	return nb_transport_perso;
+}
+
+public void setNb_transport_perso(int nb_transport_perso) {
+	this.nb_transport_perso = nb_transport_perso;
+}
+
+public ArrayList<AID> getClients() {
+	return clients;
+}
+
+public void setClients(ArrayList<AID> clients) {
+	this.clients = clients;
+}
 
 
 }
