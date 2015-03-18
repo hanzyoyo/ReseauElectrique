@@ -16,7 +16,7 @@ import jade.lang.acl.MessageTemplate;
 public class FournisseurAgent extends Agent{
 
 	private int prixaukilovente = 15;
-	private int prixaukiloproduction;
+	private int prixaukiloproduction = 5;
 	private int volumerestant;
 	private double capital=100000;
 	private ArrayList<AID> clients = new ArrayList<AID>();
@@ -39,6 +39,16 @@ public class FournisseurAgent extends Agent{
 
 		// Printout a welcome message
 		System.out.println("Le fournisseur "+getAID().getName()+" dÃ©marre sa production.");
+
+		// Get the sell/buy prices of electricity in the arguments
+		Object[] args = getArguments();
+
+		if(args != null &&	args.length > 0) {
+			prixaukilovente	= Integer.parseInt((String) args[0]);
+			if (args.length > 1){
+				prixaukiloproduction = Integer.parseInt((String) args[1]);
+			}
+		}
 
 		// Charger les comportements
 
@@ -77,7 +87,7 @@ public class FournisseurAgent extends Agent{
 					if (msg!=null){							
 						ACLMessage reply1=msg.createReply();
 						reply1.setPerformative(ACLMessage.PROPOSE);
-						reply1.setContent(String.valueOf(myFournisseur.prixaukilovente));
+						reply1.setContent(String.valueOf(myFournisseur.prixaukilovente) + "/" + String.valueOf(myFournisseur.prixaukiloproduction));
 						myAgent.send(reply1);
 
 						//log
@@ -113,7 +123,7 @@ public class FournisseurAgent extends Agent{
 							ACLMessage reply2=msg.createReply();
 							reply2.setPerformative(ACLMessage.INFORM);
 							myAgent.send(reply2);
-							
+
 
 							//log
 							System.out.println("Producteur " + myAgent.getLocalName() + " confirme l'abonnement du Client " + ((AID)reply2.getAllReceiver().next()).getLocalName());
@@ -132,7 +142,7 @@ public class FournisseurAgent extends Agent{
 
 
 	}
-	
+
 	public class MonthlyBehaviour extends CyclicBehaviour{
 		private double Somme;
 		private FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
@@ -164,11 +174,12 @@ public class FournisseurAgent extends Agent{
 			}
 		}
 	}
-	
-	public class EnvoiGUI extends OneShotBehaviour{
+
+	public class EnvoiGUI extends Behaviour{
 		private String champ;
 		private double valeur;
-		
+		private boolean foundGUI;
+
 		public EnvoiGUI(String champ, double valeur){
 			this.champ = champ;
 			this.valeur = valeur;
@@ -183,27 +194,36 @@ public class FournisseurAgent extends Agent{
 			template.addServices(sd);
 			try{
 				DFAgentDescription[] results = DFService.search(myAgent, template);
-				
-				AID gui = results[0].getName();
-				
-				//envoi de la nouvelle production mensuelle Ã  la GUI
-				ACLMessage inf = new ACLMessage(ACLMessage.INFORM);
-				inf.addReceiver(gui);
-				//on se sert du conversationID pour passer le champ Ã  MaJ
-				inf.setConversationId(champ);
-				inf.setContent(String.valueOf(valeur));
-				
-				myAgent.send(inf);
-				
-				//log
-				System.out.println("Producteur " + myAgent.getLocalName() + " a envoyÃ© une nouvelle valeur pour " + champ);
-				
+
+				//on garde ce comportement tant que l'on obtient pas de GUI (ie elle n'est pas encore souscrite au DF)
+				if(results.length != 0){
+					foundGUI = true;
+					AID gui = results[0].getName();
+
+					//envoi de la nouvelle production mensuelle Ã  la GUI
+					ACLMessage inf = new ACLMessage(ACLMessage.INFORM);
+					inf.addReceiver(gui);
+					//on se sert du conversationID pour passer le champ Ã  MaJ
+					inf.setConversationId(champ);
+					inf.setContent(String.valueOf(valeur));
+
+					myAgent.send(inf);
+
+					//log
+					System.out.println("Producteur " + myAgent.getLocalName() + " a envoyÃ© une nouvelle valeur pour " + champ);
+				}
 			}catch(FIPAException e){
 				e.printStackTrace();
 			}
-			
+
 		}
-		
+
+		@Override
+		public boolean done() {
+			// TODO Auto-generated method stub
+			return foundGUI;
+		}
+
 	}
 
 	public class FacturationClient extends Behaviour{
@@ -251,33 +271,34 @@ public class FournisseurAgent extends Agent{
 					//Rajout d'une dynamique de flux d'argent sur le portefeuille (variable capital)
 					myFournisseur.capital-=(this.somme)*myFournisseur.prixaukiloproduction; //payer la production
 					if (firsttime){
-					myAgent.addBehaviour(new findprice_TIERS());//le behaviour est executé jusqu'à trouver le prix comme le prix ne change pas elle n'est executée qu'une fois
+					myAgent.addBehaviour(new findprice_TIERS());//le behaviour est executï¿½ jusqu'ï¿½ trouver le prix comme le prix ne change pas elle n'est executï¿½e qu'une fois
 					firsttime=false;}
 					
 					myFournisseur.capital-=(this.somme-Math.min(myFournisseur.capamoy*myFournisseur.nb_transport_perso,this.somme))*myFournisseur.price_TIERS;//payer le transport
 					
-					myFournisseur.capital+=(this.somme)*myFournisseur.prixaukilovente; //Les clients qui ont répondu à la REQUEST ont payé
-					
-					
-					
-					
-				}
-				step = 2;
-				break;
+					myFournisseur.capital+=(this.somme)*myFournisseur.prixaukilovente; //Les clients qui ont rï¿½pondu ï¿½ la REQUEST ont payï¿½
+
+
 			}
+			step = 2;
+			break;
 		}
+	}
 
 		@Override
 		public boolean done() {
 			if(step == 2){
 				//debug
 				System.out.println("Facturation finie");
+				double capital=myFournisseur.getCapital();
 				
 				//TODO : toujours nÃ©cessaire?
 				((MonthlyBehaviour)parentBehaviour).setSomme(somme);
 				
 				//MaJ de la GUI
 				myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", somme));
+				myAgent.addBehaviour(new EnvoiGUI("Capital", capital));
+				
 
 				//on recalcule nos investissements tous les ans
 				if(this.finAnnee){
@@ -402,6 +423,46 @@ public class FournisseurAgent extends Agent{
 
 	public void setClients(ArrayList<AID> clients) {
 		this.clients = clients;
+	}
+
+	public int getPrixaukilovente() {
+		return prixaukilovente;
+	}
+
+	public void setPrixaukilovente(int prixaukilovente) {
+		this.prixaukilovente = prixaukilovente;
+	}
+
+	public int getPrixaukiloproduction() {
+		return prixaukiloproduction;
+	}
+
+	public void setPrixaukiloproduction(int prixaukiloproduction) {
+		this.prixaukiloproduction = prixaukiloproduction;
+	}
+
+	public int getVolumerestant() {
+		return volumerestant;
+	}
+
+	public void setVolumerestant(int volumerestant) {
+		this.volumerestant = volumerestant;
+	}
+
+	public double getCapital() {
+		return capital;
+	}
+
+	public void setCapital(double capital) {
+		this.capital = capital;
+	}
+
+	public int getDemande() {
+		return demande;
+	}
+
+	public void setDemande(int demande) {
+		this.demande = demande;
 	}
 
 

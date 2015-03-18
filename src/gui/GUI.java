@@ -94,6 +94,8 @@ public class GUI extends Agent{
 						table.get(fournisseur).setProdMensuelle(Double.parseDouble(valeur));
 					}else if(champ.equals("Production totale")){
 						table.get(fournisseur).setProdTotale(Double.parseDouble(valeur));						
+					}else if(champ.equals("Capital")){
+						table.get(fournisseur).setCapital(Double.parseDouble(valeur));
 					}
 					
 					tableau.revalidate();
@@ -121,6 +123,14 @@ public class GUI extends Agent{
 		private int nbClients = 0;
 		private double prodMensuelle = 0;
 		private double prodTotale = 0;
+		private double capital=0;
+		
+		public double getCapital() {
+			return this.capital;
+		}
+		public void setCapital(double capital) {
+			this.capital = capital;
+		}
 
 		public int getNbClients() {
 			return nbClients;
@@ -147,7 +157,7 @@ public class GUI extends Agent{
 
 		//Constructeur
 		public ZModel(){
-			String  title[] = {"Fournisseur","Nombre de clients", "Production mensuelle", "Production totale"};
+			String  title[] = {"Fournisseur","Nombre de clients", "Production mensuelle", "Production totale","Capital"};
 			this.title = title; 
 		}
 
