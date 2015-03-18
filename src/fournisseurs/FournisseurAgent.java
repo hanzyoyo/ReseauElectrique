@@ -283,7 +283,7 @@ public class FournisseurAgent extends Agent{
 			step = 2;
 			break;
 		}
-<<<<<<< HEAD
+
 	}
 
 		@Override
@@ -311,33 +311,11 @@ public class FournisseurAgent extends Agent{
 				return false;
 		}
 
-=======
->>>>>>> branch 'master' of https://github.com/hanzyoyo/ReseauElectrique.git
+
 	}
 
-	@Override
-	public boolean done() {
-		if(step == 2){
-			//debug
-			System.out.println("Facturation finie");
 
-			//TODO : toujours nécessaire?
-			((MonthlyBehaviour)parentBehaviour).setSomme(somme);
 
-			//MaJ de la GUI
-			myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", somme));
-
-			//on recalcule nos investissements tous les ans
-			if(this.finAnnee){
-				myAgent.addBehaviour(new TransportCheckBehaviour(somme,myFournisseur));
-			}				
-			return true;
-
-		}else
-			return false;
-	}
-
-}
 public class findprice_TIERS extends Behaviour{
 	private boolean b=false;
 	public void action() {
