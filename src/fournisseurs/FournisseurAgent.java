@@ -146,15 +146,15 @@ public class FournisseurAgent extends Agent{
 	public class MonthlyBehaviour extends CyclicBehaviour{
 		private double Somme;
 		private FournisseurAgent myFournisseur = (FournisseurAgent)myAgent;
-		
+
 		public void setSomme(double somme){
 			this.Somme = somme;
 		}
-		
+
 		public double getSomme(){
 			return Somme;
 		}
-		
+
 		public void action(){
 
 			MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchConversationId("top"));
@@ -166,8 +166,8 @@ public class FournisseurAgent extends Agent{
 				Somme = 0;
 				boolean finAnnee = Integer.valueOf(msg.getContent())%12==0;
 				myAgent.addBehaviour(new FacturationClient(this,finAnnee));	
-				
-				
+
+
 			}
 			else {
 				block();
@@ -234,17 +234,17 @@ public class FournisseurAgent extends Agent{
 		private double somme = 0;
 		private boolean finAnnee;
 		private boolean firsttime=true;
-		
+
 		public FacturationClient(Behaviour parentBehaviour, boolean finAnnee){
 			this.parentBehaviour = parentBehaviour;
 			this.finAnnee = finAnnee;
 		}
-		
-		
+
+
 		@Override
 		public void action() {
 			myFournisseur = (FournisseurAgent)myAgent;
-			
+
 			switch(step){
 			case 0:
 				//demande des consommations aux clients
@@ -263,10 +263,10 @@ public class FournisseurAgent extends Agent{
 				for (int i = 0; i< myFournisseur.clients.size(); i++){
 					MessageTemplate mt1= MessageTemplate.and(MessageTemplate.MatchConversationId("conso"),MessageTemplate.MatchSender(myFournisseur.getClients().get(i)));
 					ACLMessage msg1=myAgent.blockingReceive(mt1);
-					
+
 					//log
 					System.out.println("Producteur " + myAgent.getLocalName() + " a reçu consommation du client " + msg1.getSender().getLocalName());
-					
+
 					this.somme+=Double.valueOf(msg1.getContent());
 					//Rajout d'une dynamique de flux d'argent sur le portefeuille (variable capital)
 					myFournisseur.capital-=(this.somme)*myFournisseur.prixaukiloproduction; //payer la production
@@ -283,6 +283,7 @@ public class FournisseurAgent extends Agent{
 			step = 2;
 			break;
 		}
+<<<<<<< HEAD
 	}
 
 		@Override
@@ -310,120 +311,149 @@ public class FournisseurAgent extends Agent{
 				return false;
 		}
 
+=======
+>>>>>>> branch 'master' of https://github.com/hanzyoyo/ReseauElectrique.git
 	}
-	public class findprice_TIERS extends Behaviour{
-		private boolean b=false;
-		public void action() {
-			//contacter le DFService pour obtenir le price_TIERS
-			DFAgentDescription template = new DFAgentDescription();
-			ServiceDescription sd = new ServiceDescription();
-			sd.setType("electricity-transporter");
-			template.addServices(sd);
-			
-			
-			try{
-				DFAgentDescription[] results = DFService.search(myAgent, template);
 
-				ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-				msg.setContent("Demande Prix");
-				msg.addReceiver(results[0].getName());
-				myAgent.send(msg);
-				MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(results[0].getName()));
+	@Override
+	public boolean done() {
+		if(step == 2){
+			//debug
+			System.out.println("Facturation finie");
 
-				/* step 1 j'�cris , step 2 je lis et block si rien, step 3 je traite (ou directement step 2)
-				 * Pas OneShot mais Behaviour avec un done � la main */
-				
-				ACLMessage msgt=myAgent.receive(mt);
-				if(msgt!=null){
-					((FournisseurAgent) myAgent).setPrice_TIERS(Integer.valueOf(msgt.getContent()));
-					b=true;
-				}else{
-					block();
-				}
+			//TODO : toujours nécessaire?
+			((MonthlyBehaviour)parentBehaviour).setSomme(somme);
 
-			}catch(FIPAException e){
-				e.printStackTrace();
-			}
-			
-	}
-		public boolean done(){
-			if (b){return true;}
+			//MaJ de la GUI
+			myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", somme));
+
+			//on recalcule nos investissements tous les ans
+			if(this.finAnnee){
+				myAgent.addBehaviour(new TransportCheckBehaviour(somme,myFournisseur));
+			}				
+			return true;
+
+		}else
 			return false;
-			}
 	}
 
-	protected void produire1kilo(){
-		this.volumerestant+=1;
-		this.capital+=-1;
-	}
+}
+public class findprice_TIERS extends Behaviour{
+	private boolean b=false;
+	public void action() {
+		//contacter le DFService pour obtenir le price_TIERS
+		DFAgentDescription template = new DFAgentDescription();
+		ServiceDescription sd = new ServiceDescription();
+		sd.setType("electricity-transporter");
+		template.addServices(sd);
 
-	//	protected void essaivendre(ClientAgent c){
-	//		if (c.veutELectricite && (c.getCapital()>this.prixaukilovente)){
-	//			this.volumerestant+=-1;
-	//			this.capital+=prixaukilovente;
-	//			c.setCapital(c.getCapital()-this.prixaukilovente);}
-	//		else {}
-	//	}
-
-	protected void takeDown() {
-		//de-register service
+		
+		
+		
+		
 		try{
-			DFService.deregister(this);
+			DFAgentDescription[] results = DFService.search(myAgent, template);
+
+			ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+			msg.setContent("Demande Prix");
+			msg.addReceiver(results[0].getName());
+			myAgent.send(msg);
+			MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(results[0].getName()));
+
+			/* step 1 j'�cris , step 2 je lis et block si rien, step 3 je traite (ou directement step 2)
+			 * Pas OneShot mais Behaviour avec un done � la main */
+
+			ACLMessage msgt=myAgent.receive(mt);
+			if(msgt!=null){
+				((FournisseurAgent) myAgent).setPrice_TIERS(Integer.valueOf(msgt.getContent()));
+				b=true;
+			}else{
+				block();
+			}
+
+		}catch(FIPAException e){
+			e.printStackTrace();
 		}
-		catch(FIPAException fe) {
-			fe.printStackTrace();
-		}
-		// Printout a dismissal message
-		System.out.println("Le fournisseur "+getAID().getName()+" ne vend plus d'electricit��.");
-	}
 
-	public int getLT() {
-		return LT;
 	}
+	public boolean done(){
+		if (b){return true;}
+		return false;
+	}
+}
 
-	public void setLT(int lT) {
-		LT = lT;
-	}
+protected void produire1kilo(){
+	this.volumerestant+=1;
+	this.capital+=-1;
+}
 
-	public int getCF() {
-		return CF;
-	}
+//	protected void essaivendre(ClientAgent c){
+//		if (c.veutELectricite && (c.getCapital()>this.prixaukilovente)){
+//			this.volumerestant+=-1;
+//			this.capital+=prixaukilovente;
+//			c.setCapital(c.getCapital()-this.prixaukilovente);}
+//		else {}
+//	}
 
-	public void setCF(int cF) {
-		CF = cF;
+protected void takeDown() {
+	//de-register service
+	try{
+		DFService.deregister(this);
 	}
+	catch(FIPAException fe) {
+		fe.printStackTrace();
+	}
+	// Printout a dismissal message
+	System.out.println("Le fournisseur "+getAID().getName()+" ne vend plus d'electricit��.");
+}
 
-	public int getCapamoy() {
-		return capamoy;
-	}
+public int getLT() {
+	return LT;
+}
 
-	public void setCapamoy(int capamoy) {
-		this.capamoy = capamoy;
-	}
+public void setLT(int lT) {
+	LT = lT;
+}
 
-	public int getPrice_TIERS() {
-		return price_TIERS;
-	}
+public int getCF() {
+	return CF;
+}
 
-	public void setPrice_TIERS(int price_TIERS) {
-		this.price_TIERS = price_TIERS;
-	}
+public void setCF(int cF) {
+	CF = cF;
+}
 
-	public int getNb_transport_perso() {
-		return nb_transport_perso;
-	}
+public int getCapamoy() {
+	return capamoy;
+}
 
-	public void setNb_transport_perso(int nb_transport_perso) {
-		this.nb_transport_perso = nb_transport_perso;
-	}
+public void setCapamoy(int capamoy) {
+	this.capamoy = capamoy;
+}
 
-	public ArrayList<AID> getClients() {
-		return clients;
-	}
+public int getPrice_TIERS() {
+	return price_TIERS;
+}
 
-	public void setClients(ArrayList<AID> clients) {
-		this.clients = clients;
-	}
+public void setPrice_TIERS(int price_TIERS) {
+	this.price_TIERS = price_TIERS;
+}
+
+public int getNb_transport_perso() {
+	return nb_transport_perso;
+}
+
+public void setNb_transport_perso(int nb_transport_perso) {
+	this.nb_transport_perso = nb_transport_perso;
+}
+
+public ArrayList<AID> getClients() {
+	return clients;
+}
+
+public void setClients(ArrayList<AID> clients) {
+	this.clients = clients;
+}
 
 	public int getPrixaukilovente() {
 		return prixaukilovente;

@@ -146,8 +146,18 @@ public class ClientAgent extends Agent{
 								System.out.println("Client "+ myAgent.getLocalName() + " reçoit proposition du Producteur " + reply.getSender().getLocalName());
 
 								//keep producer with cheapest price
-								int price = Integer.parseInt(reply.getContent());
+								//content of message split in two parts : prixVente/prixAchat
+								String[] prixVenteAchat = reply.getContent().split("/");
+								int prixVente = Integer.parseInt(prixVenteAchat[0]);
+								int prixAchat = Integer.parseInt(prixVenteAchat[1]);								
+								
 								ClientAgent myClient = (ClientAgent)myAgent;
+								
+								//computation of mensual price
+								int price = prixVente*myClient.meanConsumption - prixAchat*myClient.meanProduction;
+								
+								//log
+								System.out.println(reply.getSender().getLocalName() + " propose un prix moyen mensuel de " + price + " à " + myAgent.getLocalName());
 
 								if(myClient.producer.getName() == null || price < myClient.producer.getPrix()){
 									//if first answer received create timeout. what if no answer received?
@@ -171,6 +181,7 @@ public class ClientAgent extends Agent{
 							block();
 						break;
 					case 2:
+						//TODO : don't forget to send refusal to all other producers or they are stuck
 						//send proposal agreement and start subscription
 						ACLMessage msg = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
 						msg.addReceiver(((ClientAgent)myAgent).producer.getName());
