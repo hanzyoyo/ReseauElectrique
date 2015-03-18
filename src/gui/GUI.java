@@ -81,6 +81,8 @@ public class GUI extends Agent{
 					String champ = msg.getConversationId();
 					String valeur = msg.getContent();
 					
+					
+					
 					//create new line in hastable if non-existent
 					if(!table.containsKey(fournisseur)){
 						table.put(fournisseur, new DataProducer());
@@ -95,6 +97,7 @@ public class GUI extends Agent{
 					}else if(champ.equals("Production totale")){
 						table.get(fournisseur).setProdTotale(Double.parseDouble(valeur));						
 					}else if(champ.equals("Capital")){
+						System.out.println(valeur);
 						table.get(fournisseur).setCapital(Double.parseDouble(valeur));
 					}
 					
@@ -179,9 +182,11 @@ public class GUI extends Agent{
 				return table.get(getKey(row)).getNbClients();
 			} else if (col == 2){
 				return table.get(getKey(row)).getProdMensuelle();
-			}else {
+			}else if (col == 3){
 				return table.get(getKey(row)).getProdTotale();
-			} 
+			}else{
+				return table.get(getKey(row)).getCapital();
+			}
 		}         
 
 		private AID getKey(int a_index) {
