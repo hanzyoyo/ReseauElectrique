@@ -28,7 +28,7 @@ public class TransportCheckBehaviour extends OneShotBehaviour {
 		double conso_stat=Somme/12;
 
 		Somme=0;
-		myFournisseur.setb(false);
+		
 
 		DFAgentDescription template = new DFAgentDescription();
 		ServiceDescription sd = new ServiceDescription();
