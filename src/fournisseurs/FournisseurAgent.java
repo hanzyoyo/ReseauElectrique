@@ -223,6 +223,7 @@ public class FournisseurAgent extends Agent{
 		@Override
 		public boolean done() {
 			// TODO Auto-generated method stub
+			
 			return foundGUI;
 		}
 
@@ -345,7 +346,7 @@ public class FournisseurAgent extends Agent{
 				myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", somme));
 				myAgent.addBehaviour(new EnvoiGUI("Production totale", myFournisseur.production_totale));
 				myAgent.addBehaviour(new EnvoiGUI("Capital", capital));
-				myAgent.addBehaviour(new EnvoiGUI("Nb transporteur", myFournisseur.nb_transport_perso));
+				myAgent.addBehaviour(new EnvoiGUI("Nb transporteur", myFournisseur.nb_transport_perso)); 
 				
 				
 				

@@ -57,7 +57,7 @@ public class GUI extends Agent{
 					DFService.register(myAgent, dfd);
 					
 					//log
-					System.out.println("GUI enregistrÃ©e auprÃ¨s du DF");
+					System.out.println("GUI enregistré auprès du DF");
 				}
 				catch(FIPAException fe) {
 					fe.printStackTrace();
@@ -101,7 +101,7 @@ public class GUI extends Agent{
 						table.get(fournisseur).setCapital(Double.parseDouble(valeur));
 					}else if(champ.equals("Nb transporteur")){
 						System.out.println(valeur);
-						table.get(fournisseur).setNbtransport(Integer.parseInt(valeur));
+						table.get(fournisseur).setNbtransport(Double.parseDouble(valeur));
 					}
 					
 					tableau.revalidate();
@@ -130,7 +130,7 @@ public class GUI extends Agent{
 		private double prodMensuelle = 0;
 		private double prodTotale = 0;
 		private double capital=0;
-		private int nbtransport=0;
+		private double nbtransport=0;
 		
 		public double getCapital() {
 			return this.capital;
@@ -141,7 +141,7 @@ public class GUI extends Agent{
 		public double getNbtransport() {
 			return this.nbtransport;
 		}
-		public void setNbtransport(int transp) {
+		public void setNbtransport(double transp) {
 			this.nbtransport=transp;
 		}
 
