@@ -299,7 +299,7 @@ public class FournisseurAgent extends Agent{
 				myFournisseur.send(req);
 
 				//log
-				System.out.println("Producteur "+myFournisseur.getLocalName()+" a envoyÃ© les demandes de consommation");
+				System.out.println("Producteur "+myFournisseur.getLocalName()+" a envoyé les demandes de consommation");
 
 				step = 1;
 				break;
@@ -309,7 +309,7 @@ public class FournisseurAgent extends Agent{
 					ACLMessage msg1=myAgent.blockingReceive(mt1);
 
 					//log
-					System.out.println("Producteur " + myAgent.getLocalName() + " a reÃ§u consommation du client " + msg1.getSender().getLocalName());
+					System.out.println("Producteur " + myAgent.getLocalName() + " a reçu consommation du client " + msg1.getSender().getLocalName());
 
 					this.somme+=Double.valueOf(msg1.getContent());
 					//Rajout d'une dynamique de flux d'argent sur le portefeuille (variable capital)
