@@ -99,6 +99,9 @@ public class GUI extends Agent{
 					}else if(champ.equals("Capital")){
 						System.out.println(valeur);
 						table.get(fournisseur).setCapital(Double.parseDouble(valeur));
+					}else if(champ.equals("Nb transporteur")){
+						System.out.println(valeur);
+						table.get(fournisseur).setNbtransport(Integer.parseInt(valeur));
 					}
 					
 					tableau.revalidate();
@@ -127,6 +130,7 @@ public class GUI extends Agent{
 		private double prodMensuelle = 0;
 		private double prodTotale = 0;
 		private double capital=0;
+		private int nbtransport=0;
 		
 		public double getCapital() {
 			return this.capital;
@@ -134,6 +138,13 @@ public class GUI extends Agent{
 		public void setCapital(double capital) {
 			this.capital = capital;
 		}
+		public double getNbtransport() {
+			return this.nbtransport;
+		}
+		public void setNbtransport(int transp) {
+			this.nbtransport=transp;
+		}
+
 
 		public int getNbClients() {
 			return nbClients;
@@ -160,7 +171,7 @@ public class GUI extends Agent{
 
 		//Constructeur
 		public ZModel(){
-			String  title[] = {"Fournisseur","Nombre de clients", "Production mensuelle", "Production totale","Capital"};
+			String  title[] = {"Fournisseur","Nombre de clients", "Production mensuelle", "Production totale","Capital","Nb transport perso"};
 			this.title = title; 
 		}
 
@@ -184,8 +195,10 @@ public class GUI extends Agent{
 				return table.get(getKey(row)).getProdMensuelle();
 			}else if (col == 3){
 				return table.get(getKey(row)).getProdTotale();
-			}else{
+			}else if (col ==4){
 				return table.get(getKey(row)).getCapital();
+			}else {
+				return table.get(getKey(row)).getNbtransport();
 			}
 		}         
 

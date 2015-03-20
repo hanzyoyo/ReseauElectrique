@@ -1,5 +1,7 @@
 package fournisseurs;
 
+import fournisseurs.FournisseurAgent.EnvoiGUI;
+import fournisseurs.FournisseurAgent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.domain.DFService;
@@ -14,6 +16,7 @@ public class TransportCheckBehaviour extends OneShotBehaviour {
 	private double Somme;
 	private FournisseurAgent myFournisseur;
 	
+	
 	public TransportCheckBehaviour(double somme2, FournisseurAgent myFournisseur) {
 		Somme = somme2;
 		this.myFournisseur = myFournisseur;
@@ -25,6 +28,7 @@ public class TransportCheckBehaviour extends OneShotBehaviour {
 		double conso_stat=Somme/12;
 
 		Somme=0;
+		myFournisseur.setb(false);
 
 		DFAgentDescription template = new DFAgentDescription();
 		ServiceDescription sd = new ServiceDescription();
@@ -54,7 +58,9 @@ public class TransportCheckBehaviour extends OneShotBehaviour {
 		}
 		/*d�cision */
 		double deltat=(myFournisseur.getCF()/(Math.min(myFournisseur.getCapamoy(),conso_stat)*(myFournisseur.getPrice_TIERS())));
-		if (myFournisseur.getLT()>deltat){myFournisseur.setNb_transport_perso(myFournisseur.getNb_transport_perso()+1);}
+		if (myFournisseur.getLT()>deltat){myFournisseur.setNb_transport_perso(myFournisseur.getNb_transport_perso()+1);
+		myFournisseur.setb(true);
+		}
 		else {}
 	}
 

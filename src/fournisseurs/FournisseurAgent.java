@@ -22,10 +22,12 @@ public class FournisseurAgent extends Agent{
 	private ArrayList<AID> clients = new ArrayList<AID>();
 	private int demande=0;
 	private int LT=3;  //Dur�e long terme
-	private int CF=50000; //Cout Fixe de cr�er une installation
+	private int CF=500; //Cout Fixe de cr�er une installation
 	private int capamoy=10; //capacit� moyenne d'une telle installation
 	private int price_TIERS;
 	private int nb_transport_perso=0;
+	private double production_totale=0;
+	private boolean b=false;
 
 	/*public FournisseurAgent(int prixvente,int prixprod, int volume,int capital){
 		this.prixaukilovente=prixvente;
@@ -225,7 +227,49 @@ public class FournisseurAgent extends Agent{
 		}
 
 	}
+	public class findprice_TIERS extends Behaviour{
+		private boolean b=false;
+		public void action() {
+			//contacter le DFService pour obtenir le price_TIERS
+			DFAgentDescription template = new DFAgentDescription();
+			ServiceDescription sd = new ServiceDescription();
+			sd.setType("electricity-transporter");
+			template.addServices(sd);
 
+			
+			
+			
+			
+			try{
+				DFAgentDescription[] results = DFService.search(myAgent, template);
+
+				ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+				msg.setContent("Demande Prix");
+				msg.addReceiver(results[0].getName());
+				myAgent.send(msg);
+				MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(results[0].getName()));
+
+				/* step 1 j'�cris , step 2 je lis et block si rien, step 3 je traite (ou directement step 2)
+				 * Pas OneShot mais Behaviour avec un done � la main */
+
+				ACLMessage msgt=myAgent.receive(mt);
+				if(msgt!=null){
+					((FournisseurAgent) myAgent).setPrice_TIERS(Integer.valueOf(msgt.getContent()));
+					b=true;
+				}else{
+					block();
+				}
+
+			}catch(FIPAException e){
+				e.printStackTrace();
+			}
+
+		}
+		public boolean done(){
+			if (b){return true;}
+			return false;
+		}
+	}
 	public class FacturationClient extends Behaviour{
 
 		private FournisseurAgent myFournisseur;
@@ -275,7 +319,7 @@ public class FournisseurAgent extends Agent{
 					firsttime=false;}
 					
 					myFournisseur.capital-=(this.somme-Math.min(myFournisseur.capamoy*myFournisseur.nb_transport_perso,this.somme))*myFournisseur.price_TIERS;//payer le transport
-					
+					System.out.println("Le capital est maintenant de : "+capital);
 					myFournisseur.capital+=(this.somme)*myFournisseur.prixaukilovente; //Les clients qui ont r�pondu � la REQUEST ont pay�
 
 
@@ -290,15 +334,20 @@ public class FournisseurAgent extends Agent{
 		public boolean done() {
 			if(step == 2){
 				//debug
+				FournisseurAgent myFournisseur=(FournisseurAgent)myAgent;
 				System.out.println("Facturation finie");
 				double capital=myFournisseur.getCapital();
 				
 				//TODO : toujours nécessaire?
 				((MonthlyBehaviour)parentBehaviour).setSomme(somme);
-				
+				myFournisseur.production_totale+=somme;
 				//MaJ de la GUI
 				myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", somme));
+				myAgent.addBehaviour(new EnvoiGUI("Production totale", myFournisseur.production_totale));
 				myAgent.addBehaviour(new EnvoiGUI("Capital", capital));
+				if (b) {myAgent.addBehaviour(new EnvoiGUI("Nb transport", myFournisseur.nb_transport_perso));}
+				
+				
 				
 
 				//on recalcule nos investissements tous les ans
@@ -316,49 +365,7 @@ public class FournisseurAgent extends Agent{
 
 
 
-public class findprice_TIERS extends Behaviour{
-	private boolean b=false;
-	public void action() {
-		//contacter le DFService pour obtenir le price_TIERS
-		DFAgentDescription template = new DFAgentDescription();
-		ServiceDescription sd = new ServiceDescription();
-		sd.setType("electricity-transporter");
-		template.addServices(sd);
 
-		
-		
-		
-		
-		try{
-			DFAgentDescription[] results = DFService.search(myAgent, template);
-
-			ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-			msg.setContent("Demande Prix");
-			msg.addReceiver(results[0].getName());
-			myAgent.send(msg);
-			MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(results[0].getName()));
-
-			/* step 1 j'�cris , step 2 je lis et block si rien, step 3 je traite (ou directement step 2)
-			 * Pas OneShot mais Behaviour avec un done � la main */
-
-			ACLMessage msgt=myAgent.receive(mt);
-			if(msgt!=null){
-				((FournisseurAgent) myAgent).setPrice_TIERS(Integer.valueOf(msgt.getContent()));
-				b=true;
-			}else{
-				block();
-			}
-
-		}catch(FIPAException e){
-			e.printStackTrace();
-		}
-
-	}
-	public boolean done(){
-		if (b){return true;}
-		return false;
-	}
-}
 
 protected void produire1kilo(){
 	this.volumerestant+=1;
@@ -471,6 +478,14 @@ public void setClients(ArrayList<AID> clients) {
 
 	public void setDemande(int demande) {
 		this.demande = demande;
+	}
+
+	public boolean isb() {
+		return b;
+	}
+
+	public void setb(boolean b) {
+		this.b = b;
 	}
 
 
