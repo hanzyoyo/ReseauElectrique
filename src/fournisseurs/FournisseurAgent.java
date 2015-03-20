@@ -22,12 +22,12 @@ public class FournisseurAgent extends Agent{
 	private ArrayList<AID> clients = new ArrayList<AID>();
 	private int demande=0;
 	private int LT=3;  //Dur�e long terme
-	private int CF=500; //Cout Fixe de cr�er une installation
+	private int CF=1000; //Cout Fixe de cr�er une installation
 	private int capamoy=10; //capacit� moyenne d'une telle installation
-	private int price_TIERS;
+	private int price_TIERS=5;
 	private int nb_transport_perso=0;
 	private double production_totale=0;
-	private boolean b=false;
+
 
 	/*public FournisseurAgent(int prixvente,int prixprod, int volume,int capital){
 		this.prixaukilovente=prixvente;
@@ -345,7 +345,7 @@ public class FournisseurAgent extends Agent{
 				myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", somme));
 				myAgent.addBehaviour(new EnvoiGUI("Production totale", myFournisseur.production_totale));
 				myAgent.addBehaviour(new EnvoiGUI("Capital", capital));
-				if (b) {myAgent.addBehaviour(new EnvoiGUI("Nb transport", myFournisseur.nb_transport_perso));}
+				myAgent.addBehaviour(new EnvoiGUI("Nb transporteur", myFournisseur.nb_transport_perso));
 				
 				
 				
@@ -480,13 +480,7 @@ public void setClients(ArrayList<AID> clients) {
 		this.demande = demande;
 	}
 
-	public boolean isb() {
-		return b;
-	}
-
-	public void setb(boolean b) {
-		this.b = b;
-	}
+	
 
 
 }
