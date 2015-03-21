@@ -22,10 +22,12 @@ public class FournisseurAgent extends Agent{
 	private ArrayList<AID> clients = new ArrayList<AID>();
 	private int demande=0;
 	private int LT=3;  //Durï¿½e long terme
-	private int CF=50000; //Cout Fixe de crï¿½er une installation
+	private int CF=1000; //Cout Fixe de crï¿½er une installation
 	private int capamoy=10; //capacitï¿½ moyenne d'une telle installation
-	private int price_TIERS;
+	private int price_TIERS=5;
 	private int nb_transport_perso=0;
+	private double production_totale=0;
+
 
 	/*public FournisseurAgent(int prixvente,int prixprod, int volume,int capital){
 		this.prixaukilovente=prixvente;
@@ -221,11 +223,54 @@ public class FournisseurAgent extends Agent{
 		@Override
 		public boolean done() {
 			// TODO Auto-generated method stub
+			
 			return foundGUI;
 		}
 
 	}
+	public class findprice_TIERS extends Behaviour{
+		private boolean b=false;
+		public void action() {
+			//contacter le DFService pour obtenir le price_TIERS
+			DFAgentDescription template = new DFAgentDescription();
+			ServiceDescription sd = new ServiceDescription();
+			sd.setType("electricity-transporter");
+			template.addServices(sd);
 
+			
+			
+			
+			
+			try{
+				DFAgentDescription[] results = DFService.search(myAgent, template);
+
+				ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+				msg.setContent("Demande Prix");
+				msg.addReceiver(results[0].getName());
+				myAgent.send(msg);
+				MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(results[0].getName()));
+
+				/* step 1 j'ï¿½cris , step 2 je lis et block si rien, step 3 je traite (ou directement step 2)
+				 * Pas OneShot mais Behaviour avec un done ï¿½ la main */
+
+				ACLMessage msgt=myAgent.receive(mt);
+				if(msgt!=null){
+					((FournisseurAgent) myAgent).setPrice_TIERS(Integer.valueOf(msgt.getContent()));
+					b=true;
+				}else{
+					block();
+				}
+
+			}catch(FIPAException e){
+				e.printStackTrace();
+			}
+
+		}
+		public boolean done(){
+			if (b){return true;}
+			return false;
+		}
+	}
 	public class FacturationClient extends Behaviour{
 
 		private FournisseurAgent myFournisseur;
@@ -255,7 +300,7 @@ public class FournisseurAgent extends Agent{
 				myFournisseur.send(req);
 
 				//log
-				System.out.println("Producteur "+myFournisseur.getLocalName()+" a envoyÃ© les demandes de consommation");
+				System.out.println("Producteur "+myFournisseur.getLocalName()+" a envoyé les demandes de consommation");
 
 				step = 1;
 				break;
@@ -265,7 +310,7 @@ public class FournisseurAgent extends Agent{
 					ACLMessage msg1=myAgent.blockingReceive(mt1);
 
 					//log
-					System.out.println("Producteur " + myAgent.getLocalName() + " a reÃ§u consommation du client " + msg1.getSender().getLocalName());
+					System.out.println("Producteur " + myAgent.getLocalName() + " a reçu consommation du client " + msg1.getSender().getLocalName());
 
 					this.somme+=Double.valueOf(msg1.getContent());
 					//Rajout d'une dynamique de flux d'argent sur le portefeuille (variable capital)
@@ -276,7 +321,7 @@ public class FournisseurAgent extends Agent{
 					firsttime=false;}
 					
 					myFournisseur.capital-=(this.somme-Math.min(myFournisseur.capamoy*myFournisseur.nb_transport_perso,this.somme))*myFournisseur.price_TIERS;//payer le transport
-					
+					System.out.println("Le capital est maintenant de : "+capital);
 					myFournisseur.capital+=(this.somme)*myFournisseur.prixaukilovente; //Les clients qui ont rï¿½pondu ï¿½ la REQUEST ont payï¿½
 
 
@@ -291,15 +336,20 @@ public class FournisseurAgent extends Agent{
 		public boolean done() {
 			if(step == 2){
 				//debug
+				FournisseurAgent myFournisseur=(FournisseurAgent)myAgent;
 				System.out.println("Facturation finie");
 				double capital=myFournisseur.getCapital();
 				
 				//TODO : toujours nÃ©cessaire?
 				((MonthlyBehaviour)parentBehaviour).setSomme(somme);
-				
+				myFournisseur.production_totale+=somme;
 				//MaJ de la GUI
 				myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", somme));
+				myAgent.addBehaviour(new EnvoiGUI("Production totale", myFournisseur.production_totale));
 				myAgent.addBehaviour(new EnvoiGUI("Capital", capital));
+				myAgent.addBehaviour(new EnvoiGUI("Nb transporteur", myFournisseur.nb_transport_perso)); 
+				
+				
 				
 
 				//on recalcule nos investissements tous les ans
@@ -317,49 +367,7 @@ public class FournisseurAgent extends Agent{
 
 
 
-public class findprice_TIERS extends Behaviour{
-	private boolean b=false;
-	public void action() {
-		//contacter le DFService pour obtenir le price_TIERS
-		DFAgentDescription template = new DFAgentDescription();
-		ServiceDescription sd = new ServiceDescription();
-		sd.setType("electricity-transporter");
-		template.addServices(sd);
 
-		
-		
-		
-		
-		try{
-			DFAgentDescription[] results = DFService.search(myAgent, template);
-
-			ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-			msg.setContent("Demande Prix");
-			msg.addReceiver(results[0].getName());
-			myAgent.send(msg);
-			MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(results[0].getName()));
-
-			/* step 1 j'ï¿½cris , step 2 je lis et block si rien, step 3 je traite (ou directement step 2)
-			 * Pas OneShot mais Behaviour avec un done ï¿½ la main */
-
-			ACLMessage msgt=myAgent.receive(mt);
-			if(msgt!=null){
-				((FournisseurAgent) myAgent).setPrice_TIERS(Integer.valueOf(msgt.getContent()));
-				b=true;
-			}else{
-				block();
-			}
-
-		}catch(FIPAException e){
-			e.printStackTrace();
-		}
-
-	}
-	public boolean done(){
-		if (b){return true;}
-		return false;
-	}
-}
 
 protected void produire1kilo(){
 	this.volumerestant+=1;
@@ -473,6 +481,8 @@ public void setClients(ArrayList<AID> clients) {
 	public void setDemande(int demande) {
 		this.demande = demande;
 	}
+
+	
 
 
 }

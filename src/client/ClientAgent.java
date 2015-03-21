@@ -69,7 +69,7 @@ public class ClientAgent extends Agent{
 				Random rndm = new Random();
 				double newConsumption = rndm.nextGaussian() * varianceConsumption + meanConsumption;
 				double newProduction = rndm.nextGaussian() * varianceProduction + meanProduction;
-				monthlyTotal = newConsumption - newProduction;
+				monthlyTotal =Math.max( newConsumption - newProduction,0);
 			}
 		});
 
