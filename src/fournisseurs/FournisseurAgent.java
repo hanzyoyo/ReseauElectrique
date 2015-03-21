@@ -269,6 +269,7 @@ public class FournisseurAgent extends Agent{
 
 					this.somme+=Double.valueOf(msg1.getContent());
 					//Rajout d'une dynamique de flux d'argent sur le portefeuille (variable capital)
+					//TODO : rajouter la gestion de ses propres transporteurs
 					myFournisseur.capital-=(this.somme)*myFournisseur.prixaukiloproduction; //payer la production
 					if (firsttime){
 					myAgent.addBehaviour(new findprice_TIERS());//le behaviour est execut� jusqu'� trouver le prix comme le prix ne change pas elle n'est execut�e qu'une fois
