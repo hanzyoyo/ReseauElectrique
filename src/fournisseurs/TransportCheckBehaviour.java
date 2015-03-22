@@ -56,15 +56,14 @@ public class TransportCheckBehaviour extends OneShotBehaviour {
 		}catch(FIPAException e){
 			e.printStackTrace();
 		}
-		System.out.println("ON EST RENTRE !!!!!!!!!!!!!!!!!!!!!!!");
 		/*d�cision myFournisseur.getLT()>deltat*/
 		double seuil=12*myFournisseur.getLT()*Math.min(myFournisseur.getCapamoy()*(myFournisseur.getNb_transport_perso()+1),conso_stat)*myFournisseur.getPrice_TIERS()-myFournisseur.getCF();
 		double deltat=(myFournisseur.getCF()/(Math.min(myFournisseur.getCapamoy(),conso_stat)*(myFournisseur.getPrice_TIERS())));
-		if (seuil>0){myFournisseur.setNb_transport_perso(myFournisseur.getNb_transport_perso()+1);
-		System.out.println("ATTENTION nouveau transport perso");
 		
+		if (seuil>0){
+			myFournisseur.setNb_transport_perso(myFournisseur.getNb_transport_perso()+1);
+			System.out.println("ATTENTION nouveau transport perso");
 		}
-		else {}
 	}
 
 }

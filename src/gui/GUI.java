@@ -57,7 +57,7 @@ public class GUI extends Agent{
 					DFService.register(myAgent, dfd);
 					
 					//log
-					System.out.println("GUI enregistrÈ auprËs du DF");
+					System.out.println("GUI enregistr√©e aupr√®s du DF");
 				}
 				catch(FIPAException fe) {
 					fe.printStackTrace();
@@ -70,13 +70,10 @@ public class GUI extends Agent{
 			
 			@Override
 			public void action() {
-				// TODO Auto-generated method stub
+				// TODO un message pour tous les champs?
 				MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
 				ACLMessage msg = myAgent.receive(mt);
-				if(msg != null){
-					//log
-					System.out.println("GUI a re√ßu un message du fournisseur : "+msg.getSender().getLocalName());
-					
+				if(msg != null){					
 					AID fournisseur = msg.getSender();
 					String champ = msg.getConversationId();
 					String valeur = msg.getContent();
@@ -93,15 +90,13 @@ public class GUI extends Agent{
 					if(champ.equals("Nombre de clients")){
 						table.get(fournisseur).setNbClients((int)Double.parseDouble(valeur));
 					}else if(champ.equals("Production mensuelle")){
-						table.get(fournisseur).setProdMensuelle(Double.parseDouble(valeur));
+						table.get(fournisseur).setProdMensuelle(Math.round(Double.parseDouble(valeur)));
 					}else if(champ.equals("Production totale")){
-						table.get(fournisseur).setProdTotale(Double.parseDouble(valeur));						
+						table.get(fournisseur).setProdTotale(Math.round(Double.parseDouble(valeur)));						
 					}else if(champ.equals("Capital")){
-						System.out.println(valeur);
-						table.get(fournisseur).setCapital(Double.parseDouble(valeur));
+						table.get(fournisseur).setCapital(Math.round(Double.parseDouble(valeur)));
 					}else if(champ.equals("Nb transporteur")){
-						System.out.println(valeur);
-						table.get(fournisseur).setNbtransport(Double.parseDouble(valeur));
+						table.get(fournisseur).setNbtransport((int)Double.parseDouble(valeur));
 					}
 					
 					tableau.revalidate();
@@ -171,7 +166,7 @@ public class GUI extends Agent{
 
 		//Constructeur
 		public ZModel(){
-			String  title[] = {"Fournisseur","Nombre de clients", "Production mensuelle", "Production totale","Capital","Nb transport perso"};
+			String  title[] = {"Fournisseur","Nombre de clients", "Production mensuelle", "Production totale","Capital","Nb transporteur"};
 			this.title = title; 
 		}
 

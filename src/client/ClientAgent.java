@@ -1,5 +1,6 @@
 package client;
 
+import java.util.ArrayList;
 import java.util.Random;
 
 import jade.core.AID;
@@ -43,7 +44,8 @@ public class ClientAgent extends Agent{
 		}
 	}
 
-	private Producer producer = new Producer();
+	private Producer bestProducer = new Producer();
+	private ArrayList<AID>  refusedProducers = new ArrayList<AID>();
 
 	public void setup(){
 		// Get the mean consumption/production of electricity in the arguments
@@ -80,7 +82,7 @@ public class ClientAgent extends Agent{
 			public void action() {
 
 				ClientAgent myClient = (ClientAgent)myAgent;
-				MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchSender(myClient.producer.getName()), MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
+				MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchSender(myClient.bestProducer.getName()), MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
 				ACLMessage msg = myAgent.receive(mt);
 
 				if(msg != null){
@@ -150,47 +152,63 @@ public class ClientAgent extends Agent{
 								String[] prixVenteAchat = reply.getContent().split("/");
 								int prixVente = Integer.parseInt(prixVenteAchat[0]);
 								int prixAchat = Integer.parseInt(prixVenteAchat[1]);								
-								
+
 								ClientAgent myClient = (ClientAgent)myAgent;
-								
+
 								//computation of mensual price
 								int price = prixVente*myClient.meanConsumption - prixAchat*myClient.meanProduction;
-								
+
 								//log
 								System.out.println(reply.getSender().getLocalName() + " propose un prix moyen mensuel de " + price + " à " + myAgent.getLocalName());
 
-								if(myClient.producer.getName() == null || price < myClient.producer.getPrix()){
+								if(myClient.bestProducer.getName() == null){
 									//if first answer received create timeout. what if no answer received?
-									if(myClient.producer.getName() == null){
-										myAgent.addBehaviour(new WakerBehaviour(myAgent,1000){
-											protected void handleElapsedTimeout() {
+									myAgent.addBehaviour(new WakerBehaviour(myAgent,1000){
+										protected void handleElapsedTimeout() {
+											//log
+											System.out.println("Timeout Elapsed");
 
-												//log
-												System.out.println("Timeout Elapsed");
-
-												SubscriptionBehaviour.this.step=2;
-											}
-										});
-									}
-									//update local variable
-									myClient.producer.setName(reply.getSender());
-									myClient.producer.setPrix(price);								
+											SubscriptionBehaviour.this.step=2;
+										}
+									});
+									//create bestproducer
+									myClient.bestProducer.setName(reply.getSender());
+									myClient.bestProducer.setPrix(price);								
+								}else if(price < myClient.bestProducer.getPrix()){
+									//add ex-bestproducer to refused one
+									refusedProducers.add(bestProducer.name);
+									//update bestproducer
+									myClient.bestProducer.setName(reply.getSender());
+									myClient.bestProducer.setPrix(price);
+								}else{
+									//add to refused ones
+									refusedProducers.add(reply.getSender());
 								}
 							}
 						}else
 							block();
 						break;
 					case 2:
-						//TODO : don't forget to send refusal to all other producers or they are stuck
+						if(!refusedProducers.isEmpty()){
+							ACLMessage refusal = new ACLMessage(ACLMessage.REJECT_PROPOSAL);
+							refusal.setConversationId("Subscription");
+							refusal.setReplyWith("Subscription"+System.currentTimeMillis());
+							for(AID refusedProducer:refusedProducers){
+								refusal.addReceiver(refusedProducer);
+							}
+							myAgent.send(refusal);
+						}
+
+
 						//send proposal agreement and start subscription
 						ACLMessage msg = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
-						msg.addReceiver(((ClientAgent)myAgent).producer.getName());
+						msg.addReceiver(((ClientAgent)myAgent).bestProducer.getName());
 						msg.setConversationId("Subscription");
 						msg.setReplyWith("Subscription"+System.currentTimeMillis());
 						myAgent.send(msg);
 
 						//log
-						System.out.println("Agent " + myAgent.getLocalName() + " envoie demande d'abonnement au Producteur " + ((ClientAgent)myAgent).producer.getName().getLocalName());
+						System.out.println("Agent " + myAgent.getLocalName() + " envoie demande d'abonnement au Producteur " + ((ClientAgent)myAgent).bestProducer.getName().getLocalName());
 
 						mt = MessageTemplate.and(MessageTemplate.MatchConversationId("Subscription"),MessageTemplate.MatchInReplyTo(msg.getReplyWith()));
 						step=3;
@@ -218,7 +236,6 @@ public class ClientAgent extends Agent{
 
 		@Override
 		public boolean done() {
-			// TODO Auto-generated method stub
 			return step==4;
 		}
 	}

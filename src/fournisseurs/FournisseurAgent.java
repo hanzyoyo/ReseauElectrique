@@ -96,8 +96,7 @@ public class FournisseurAgent extends Agent{
 						System.out.println("Producteur " + myAgent.getLocalName() + " envoie proposition au Client " + ((AID)reply1.getAllReceiver().next()).getLocalName());
 
 						step++;
-					}
-					else {
+					}else {
 						block();
 					} 
 					break;
@@ -106,21 +105,22 @@ public class FournisseurAgent extends Agent{
 					mt = MessageTemplate.MatchConversationId("Subscription");
 					msg=myAgent.receive(mt);
 					if (msg!=null){
+
 						if (msg.getPerformative() == ACLMessage.REJECT_PROPOSAL){
 
 							//log
-							System.out.println("Agent " + msg.getSender().getLocalName() + " refuse la proposition.");
+							System.out.println("Agent " + msg.getSender().getLocalName() + " refuse la proposition de "+myAgent.getLocalName()+ ".");
 
-							step+=-1;
+							step=0;
 							break;
 						}
 						else if(msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL){
 							//ajout du client dans la base
 							myFournisseur.clients.add(msg.getSender());
-							
+
 							//envoi de l'information à la GUI
 							myAgent.addBehaviour(new EnvoiGUI("Nombre de clients", myFournisseur.clients.size()));
-							
+
 							//lui confirmer
 							ACLMessage reply2=msg.createReply();
 							reply2.setPerformative(ACLMessage.INFORM);
@@ -133,6 +133,8 @@ public class FournisseurAgent extends Agent{
 							step = 0;
 						}
 
+					}else{
+						block();
 					}
 					break;
 				}
@@ -168,8 +170,6 @@ public class FournisseurAgent extends Agent{
 				Somme = 0;
 				boolean finAnnee = Integer.valueOf(msg.getContent())%12==0;
 				myAgent.addBehaviour(new FacturationClient(this,finAnnee));	
-
-
 			}
 			else {
 				block();
@@ -202,7 +202,7 @@ public class FournisseurAgent extends Agent{
 					foundGUI = true;
 					AID gui = results[0].getName();
 
-					//envoi de la nouvelle production mensuelle à la GUI
+					//envoi de la nouvelle information à la GUI
 					ACLMessage inf = new ACLMessage(ACLMessage.INFORM);
 					inf.addReceiver(gui);
 					//on se sert du conversationID pour passer le champ à MaJ
@@ -212,7 +212,7 @@ public class FournisseurAgent extends Agent{
 					myAgent.send(inf);
 
 					//log
-					System.out.println("Producteur " + myAgent.getLocalName() + " a envoyé une nouvelle valeur pour " + champ);
+					//System.out.println("Producteur " + myAgent.getLocalName() + " a envoyé une nouvelle valeur pour " + champ);
 				}
 			}catch(FIPAException e){
 				e.printStackTrace();
@@ -222,53 +222,56 @@ public class FournisseurAgent extends Agent{
 
 		@Override
 		public boolean done() {
-			// TODO Auto-generated method stub
-			
 			return foundGUI;
 		}
 
 	}
 	public class findprice_TIERS extends Behaviour{
-		private boolean b=false;
-		public void action() {
-			//contacter le DFService pour obtenir le price_TIERS
-			DFAgentDescription template = new DFAgentDescription();
-			ServiceDescription sd = new ServiceDescription();
-			sd.setType("electricity-transporter");
-			template.addServices(sd);
+		private int step = 0;
+		private AID transporteur;
 
-			
-			
-			
-			
-			try{
-				DFAgentDescription[] results = DFService.search(myAgent, template);
+		public void action() {
+			switch(step){
+			case 0:
+				//contacter le DFService pour obtenir le price_TIERS
+				DFAgentDescription template = new DFAgentDescription();
+				ServiceDescription sd = new ServiceDescription();
+				sd.setType("electricity-transporter");
+				template.addServices(sd);
+
+				try{
+					DFAgentDescription[] results = DFService.search(myAgent, template);
+					
+					if(results[0] != null){
+						transporteur = results[0].getName();
+						step = 1;
+					}
+
+				}catch(FIPAException e){
+					e.printStackTrace();
+				}
+				break;
+			case 1:
 
 				ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
 				msg.setContent("Demande Prix");
-				msg.addReceiver(results[0].getName());
+				msg.addReceiver(transporteur);
 				myAgent.send(msg);
-				MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(results[0].getName()));
-
-				/* step 1 j'�cris , step 2 je lis et block si rien, step 3 je traite (ou directement step 2)
-				 * Pas OneShot mais Behaviour avec un done � la main */
+				MessageTemplate mt=MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchSender(transporteur));
 
 				ACLMessage msgt=myAgent.receive(mt);
 				if(msgt!=null){
 					((FournisseurAgent) myAgent).setPrice_TIERS(Integer.valueOf(msgt.getContent()));
-					b=true;
+					step = 2;
 				}else{
 					block();
 				}
-
-			}catch(FIPAException e){
-				e.printStackTrace();
+				break;
 			}
 
 		}
 		public boolean done(){
-			if (b){return true;}
-			return false;
+			return step == 2;
 		}
 	}
 	public class FacturationClient extends Behaviour{
@@ -300,7 +303,7 @@ public class FournisseurAgent extends Agent{
 				myFournisseur.send(req);
 
 				//log
-				System.out.println("Producteur "+myFournisseur.getLocalName()+" a envoy� les demandes de consommation");
+				System.out.println("Producteur "+myFournisseur.getLocalName()+" a envoyé les demandes de consommation");
 
 				step = 1;
 				break;
@@ -310,27 +313,26 @@ public class FournisseurAgent extends Agent{
 					ACLMessage msg1=myAgent.blockingReceive(mt1);
 
 					//log
-					System.out.println("Producteur " + myAgent.getLocalName() + " a re�u consommation du client " + msg1.getSender().getLocalName());
+					System.out.println("Producteur " + myAgent.getLocalName() + " a reçu consommation du client " + msg1.getSender().getLocalName());
 
 					this.somme+=Double.valueOf(msg1.getContent());
 					//Rajout d'une dynamique de flux d'argent sur le portefeuille (variable capital)
-					//TODO : rajouter la gestion de ses propres transporteurs
 					myFournisseur.capital-=(this.somme)*myFournisseur.prixaukiloproduction; //payer la production
 					if (firsttime){
-					myAgent.addBehaviour(new findprice_TIERS());//le behaviour est execut� jusqu'� trouver le prix comme le prix ne change pas elle n'est execut�e qu'une fois
-					firsttime=false;}
-					
+						myAgent.addBehaviour(new findprice_TIERS());//le behaviour est execut� jusqu'� trouver le prix comme le prix ne change pas elle n'est execut�e qu'une fois
+						firsttime=false;
+					}
+
 					myFournisseur.capital-=(this.somme-Math.min(myFournisseur.capamoy*myFournisseur.nb_transport_perso,this.somme))*myFournisseur.price_TIERS;//payer le transport
-					System.out.println("Le capital est maintenant de : "+capital);
 					myFournisseur.capital+=(this.somme)*myFournisseur.prixaukilovente; //Les clients qui ont r�pondu � la REQUEST ont pay�
 
 
+				}
+				step = 2;
+				break;
 			}
-			step = 2;
-			break;
-		}
 
-	}
+		}
 
 		@Override
 		public boolean done() {
@@ -339,108 +341,88 @@ public class FournisseurAgent extends Agent{
 				FournisseurAgent myFournisseur=(FournisseurAgent)myAgent;
 				System.out.println("Facturation finie");
 				double capital=myFournisseur.getCapital();
-				
-				//TODO : toujours nécessaire?
-				((MonthlyBehaviour)parentBehaviour).setSomme(somme);
+
 				myFournisseur.production_totale+=somme;
 				//MaJ de la GUI
 				myAgent.addBehaviour(new EnvoiGUI("Production mensuelle", somme));
 				myAgent.addBehaviour(new EnvoiGUI("Production totale", myFournisseur.production_totale));
 				myAgent.addBehaviour(new EnvoiGUI("Capital", capital));
 				myAgent.addBehaviour(new EnvoiGUI("Nb transporteur", myFournisseur.nb_transport_perso)); 
-				
-				
-				
+
+
+
 
 				//on recalcule nos investissements tous les ans
 				if(this.finAnnee){
-						myAgent.addBehaviour(new TransportCheckBehaviour(somme,myFournisseur));
+					myAgent.addBehaviour(new TransportCheckBehaviour(somme,myFournisseur));
 				}				
 				return true;
-				
+
 			}else
 				return false;
 		}
-
-
 	}
 
 
-
-
-
-protected void produire1kilo(){
-	this.volumerestant+=1;
-	this.capital+=-1;
-}
-
-//	protected void essaivendre(ClientAgent c){
-//		if (c.veutELectricite && (c.getCapital()>this.prixaukilovente)){
-//			this.volumerestant+=-1;
-//			this.capital+=prixaukilovente;
-//			c.setCapital(c.getCapital()-this.prixaukilovente);}
-//		else {}
-//	}
-
-protected void takeDown() {
-	//de-register service
-	try{
-		DFService.deregister(this);
+	protected void takeDown() {
+		//de-register service
+		try{
+			DFService.deregister(this);
+		}
+		catch(FIPAException fe) {
+			fe.printStackTrace();
+		}
+		// Printout a dismissal message
+		System.out.println("Le fournisseur "+getAID().getName()+" ne vend plus d'electricité.");
 	}
-	catch(FIPAException fe) {
-		fe.printStackTrace();
+
+	public int getLT() {
+		return LT;
 	}
-	// Printout a dismissal message
-	System.out.println("Le fournisseur "+getAID().getName()+" ne vend plus d'electricit��.");
-}
 
-public int getLT() {
-	return LT;
-}
+	public void setLT(int lT) {
+		LT = lT;
+	}
 
-public void setLT(int lT) {
-	LT = lT;
-}
+	public int getCF() {
+		return CF;
+	}
 
-public int getCF() {
-	return CF;
-}
+	public void setCF(int cF) {
+		CF = cF;
+	}
 
-public void setCF(int cF) {
-	CF = cF;
-}
+	public int getCapamoy() {
+		return capamoy;
+	}
 
-public int getCapamoy() {
-	return capamoy;
-}
+	public void setCapamoy(int capamoy) {
+		this.capamoy = capamoy;
+	}
 
-public void setCapamoy(int capamoy) {
-	this.capamoy = capamoy;
-}
+	public int getPrice_TIERS() {
+		return price_TIERS;
+	}
 
-public int getPrice_TIERS() {
-	return price_TIERS;
-}
+	public void setPrice_TIERS(int price_TIERS) {
+		this.price_TIERS = price_TIERS;
+	}
 
-public void setPrice_TIERS(int price_TIERS) {
-	this.price_TIERS = price_TIERS;
-}
+	public int getNb_transport_perso() {
+		return nb_transport_perso;
+	}
 
-public int getNb_transport_perso() {
-	return nb_transport_perso;
-}
+	public void setNb_transport_perso(int nb_transport_perso) {
+		this.nb_transport_perso = nb_transport_perso;
+	}
 
-public void setNb_transport_perso(int nb_transport_perso) {
-	this.nb_transport_perso = nb_transport_perso;
-}
+	public ArrayList<AID> getClients() {
+		return clients;
+	}
 
-public ArrayList<AID> getClients() {
-	return clients;
-}
-
-public void setClients(ArrayList<AID> clients) {
-	this.clients = clients;
-}
+	public void setClients(ArrayList<AID> clients) {
+		this.clients = clients;
+	}
 
 	public int getPrixaukilovente() {
 		return prixaukilovente;
@@ -482,7 +464,7 @@ public void setClients(ArrayList<AID> clients) {
 		this.demande = demande;
 	}
 
-	
+
 
 
 }
